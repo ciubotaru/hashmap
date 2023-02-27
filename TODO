@@ -1,0 +1,12 @@
+Basic operations:
+* probe -- by key, return error if does not exist
+* search -- by key, return pointer to value or null
+* insert -- by key and value, add new or return error if exists
+* update -- by key and value, replace existing or return error if does not exist
+* put -- either insert new, or update existing
+* delete -- by key, remove existing or return error if does not exist
+* getsize -- return number of key-value pairs
+Additional operations:
+* iterator -- traverse the map and call a custom function at each key-value pair
+* hashfn -- use a custom hash function in a given hash map
+* cmpfn -- use a custom comparison function on a guven hash map
