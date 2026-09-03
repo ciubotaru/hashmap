@@ -2,6 +2,10 @@
 #include "hashmap.h"
 #include "hashmap-internals.h"
 
+static const hashmap_options_t default_options = {
+	.min_buckets = 16
+};
+
 static struct hashmap *hashmap_create_(size_t nr_buckets) {
 	struct hashmap *newmap = malloc(sizeof(hashmap_t));
 	if (!newmap)
@@ -12,9 +16,10 @@ static struct hashmap *hashmap_create_(size_t nr_buckets) {
 		return NULL;
 	}
 	newmap->nr_buckets = nr_buckets;
+	newmap->options = default_options;
 	return newmap;
 }
 
 hashmap_t *hashmap_create(void) {
-	return hashmap_create_(HASHMAP_DEFAULT_BUCKETS);
+	return hashmap_create_(default_options.min_buckets);
 }
