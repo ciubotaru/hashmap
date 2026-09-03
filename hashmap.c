@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <math.h>
 #include "hashmap.h"
 #include "hashmap-internals.h"
 
@@ -22,4 +23,27 @@ static struct hashmap *hashmap_create_(size_t nr_buckets) {
 
 hashmap_t *hashmap_create(void) {
 	return hashmap_create_(default_options.min_buckets);
+}
+
+int hashmap_opt(hashmap_t *map, const int key, float value) {
+	if (!map)
+		return -1;
+	switch (key) {
+	case HASHMAP_MIN_BUCKETS:
+		if (!isfinite(value))
+			return -1;
+		if (value < 1.0f)
+			return -1;
+		if (value != floorf(value))
+			return -1;
+		if (value >= (float)SIZE_MAX)
+			return -1;
+		if (map->options.min_buckets == (size_t) value)
+			return 0;
+		map->options.min_buckets = (size_t) value;
+		break;
+	default:
+		return -1;
+	}
+	return 0;
 }
