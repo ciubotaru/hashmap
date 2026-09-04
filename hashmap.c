@@ -37,6 +37,13 @@ static int hash_compare(const void *key1,
 	return 0;
 }
 
+static size_t hash_bucket(size_t nr_buckets,
+			  const void *key,
+			  size_t key_size) {
+	size_t hash = hash_function(key, key_size);
+	return hash % nr_buckets;
+}
+
 static struct hashmap *hashmap_create_(size_t nr_buckets) {
 	struct hashmap *newmap = malloc(sizeof(hashmap_t));
 	if (!newmap)
