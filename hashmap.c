@@ -62,6 +62,19 @@ hashmap_t *hashmap_create(void) {
 	return hashmap_create_(default_options.min_buckets);
 }
 
+static hashmap_entry_t *hash_search_(const hashmap_t *map,
+			      const void *key,
+			      const size_t key_size) {
+	size_t bucket_nr = hash_bucket(map->nr_buckets, key, key_size);
+	hashmap_entry_t *current = map->buckets[bucket_nr];
+	while (current) {
+		if (hash_compare(key, key_size, current->key, current->key_size) == 0)
+			break;
+		current = current->next;
+	}
+	return current;
+}
+
 int hashmap_opt(hashmap_t *map, const int key, float value) {
 	if (!map)
 		return -1;
