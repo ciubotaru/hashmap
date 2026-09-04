@@ -133,6 +133,30 @@ static int hash_insert_(hashmap_t *map,
 	return 0;
 }
 
+int hash_insert(hashmap_t **map,
+		 const void *key,
+		 const size_t key_size,
+		 const void *data,
+		 const size_t data_size) {
+	if (!map)
+		return -1;
+	if (key == NULL && key_size != 0)
+		return -1;
+	if (data == NULL && data_size != 0)
+		return -1;
+	if (hash_search_(*map, key, key_size))
+		return -1;
+	if (!*map) {
+		*map = hashmap_create();
+		if (!*map)
+			return -1;
+	}
+	if (hash_search_(*map, key, key_size))
+		return -1;
+	hash_insert_(*map, key, key_size, data, data_size);
+	return 0;
+}
+
 int hashmap_opt(hashmap_t *map, const int key, float value) {
 	if (!map)
 		return -1;
