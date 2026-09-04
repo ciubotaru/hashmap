@@ -62,6 +62,14 @@ hashmap_t *hashmap_create(void) {
 	return hashmap_create_(default_options.min_buckets);
 }
 
+static void hash_free_(hashmap_entry_t *entry) {
+	if (entry->key)
+		free(entry->key);
+	if (entry->data)
+		free(entry->data);
+	free(entry);
+}
+
 static hashmap_entry_t *hash_search_(const hashmap_t *map,
 			      const void *key,
 			      const size_t key_size) {
