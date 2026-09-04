@@ -7,6 +7,15 @@ static const hashmap_options_t default_options = {
 	.min_buckets = 16
 };
 
+static size_t hash_function(const char *s, const size_t size) {
+	size_t rand1 = 31307;
+	size_t rand2 = 19451;
+	size_t hash = 0;
+	for (size_t i = 0; i < size; i++, rand1 *= rand2)
+		hash = rand1 * hash + s[i];
+	return hash;
+}
+
 static struct hashmap *hashmap_create_(size_t nr_buckets) {
 	struct hashmap *newmap = malloc(sizeof(hashmap_t));
 	if (!newmap)
