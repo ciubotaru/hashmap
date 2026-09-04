@@ -9,6 +9,10 @@ typedef struct hashmap hashmap_t;
 
 hashmap_t *hashmap_create(void);
 
+int hash_probe(const hashmap_t *map,
+	       const void *key,
+	       size_t key_size);
+
 int hashmap_opt(hashmap_t *map, const int option, float value);
 
 #endif /* HASHMAP_H */

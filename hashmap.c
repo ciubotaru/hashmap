@@ -75,6 +75,18 @@ static hashmap_entry_t *hash_search_(const hashmap_t *map,
 	return current;
 }
 
+int hash_probe(const hashmap_t *map, const void *key, const size_t key_size) {
+	if (!map)
+		return -1;
+	if (!key && key_size)
+		return -1;
+	hashmap_entry_t *output = hash_search_(map, key, key_size);
+	if (output)
+		return 1;
+	else
+		return 0;
+}
+
 int hashmap_opt(hashmap_t *map, const int key, float value) {
 	if (!map)
 		return -1;
