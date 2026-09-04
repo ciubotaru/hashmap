@@ -16,6 +16,27 @@ static size_t hash_function(const char *s, const size_t size) {
 	return hash;
 }
 
+static int hash_compare(const void *key1,
+			size_t key1_size,
+			const void *key2,
+			size_t key2_size) {
+	if (key1_size == 0 && key2_size == 0)
+		return 0;
+	if (key1_size == 0)
+		return -1;
+	if (key2_size == 0)
+		return 1;
+	size_t min_size = key1_size < key2_size ? key1_size : key2_size;
+	int rc = memcmp(key1, key2, min_size);
+	if (rc != 0)
+		return rc;
+	if (key1_size < key2_size)
+		return -1;
+	if (key1_size > key2_size)
+		return 1;
+	return 0;
+}
+
 static struct hashmap *hashmap_create_(size_t nr_buckets) {
 	struct hashmap *newmap = malloc(sizeof(hashmap_t));
 	if (!newmap)
