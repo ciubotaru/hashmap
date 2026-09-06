@@ -15,6 +15,8 @@ typedef struct {
 	size_t min_buckets;
 } hashmap_options_t;
 
+#define HASHMAP_RESIZE_MOVES 2
+
 struct hashmap {
 	size_t nr_buckets;
 	size_t nr_entries;

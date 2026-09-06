@@ -100,6 +100,31 @@ int hash_probe(const hashmap_t *map, const void *key, const size_t key_size) {
 		return 0;
 }
 
+static void move_on_resize(hashmap_t *map) {
+	hashmap_entry_t *tmp = NULL;
+	size_t nr_moves = HASHMAP_RESIZE_MOVES;
+	size_t new_bucket_nr;
+	while (nr_moves && map->nr_entries_old) {
+		while (!map->buckets_old[map->resize_bucket])
+			map->resize_bucket++;
+		tmp = map->buckets_old[map->resize_bucket];
+		new_bucket_nr = hash_bucket(map->nr_buckets, tmp->key, tmp->key_size);
+		map->buckets_old[map->resize_bucket] = tmp->next;
+		tmp->next = map->buckets[new_bucket_nr];
+		map->buckets[new_bucket_nr] = tmp;
+		map->nr_entries++;
+		map->nr_entries_old--;
+		nr_moves--;
+	}
+	if (map->nr_entries_old == 0) {
+		free(map->buckets_old);
+		map->buckets_old = NULL;
+		map->resize_in_progress = false;
+		map->nr_buckets_old = 0;
+		map->resize_bucket = 0;
+	}
+}
+
 static int hashmap_resize(hashmap_t *map, size_t new_size) {
 	hashmap_entry_t **tmp = calloc(new_size, sizeof(hashmap_entry_t *));
 	if (tmp == NULL)
