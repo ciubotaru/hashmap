@@ -13,6 +13,12 @@ int hash_probe(const hashmap_t *map,
 	       const void *key,
 	       size_t key_size);
 
+int hash_search(hashmap_t *map,
+		const void *key,
+		size_t key_size,
+		const void **data,
+		size_t *data_size);
+
 int hash_insert(hashmap_t **map,
 		const void *key,
 		size_t key_size,

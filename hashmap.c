@@ -124,6 +124,23 @@ int hash_probe(const hashmap_t *map, const void *key, const size_t key_size) {
 		return 0;
 }
 
+int hash_search(hashmap_t *map,
+		const void *key,
+		size_t key_size,
+		const void **data,
+		size_t *data_size) {
+	if (!map || !data || !data_size)
+		return -1;
+	if (!key && key_size)
+		return -1;
+	hashmap_entry_t *entry = hash_search_(map, key, key_size);
+	if (!entry)
+		return -1;
+	*data = entry->data;
+	*data_size = entry->data_size;
+	return 0;
+}
+
 static void move_on_resize(hashmap_t *map) {
 	hashmap_entry_t *tmp = NULL;
 	size_t nr_moves = HASHMAP_RESIZE_MOVES;
