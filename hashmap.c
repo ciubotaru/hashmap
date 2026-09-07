@@ -292,6 +292,12 @@ int hash_delete(hashmap_t **map, const void *key, size_t key_size) {
 	return 0;
 }
 
+size_t hashmap_getsize(hashmap_t *map) {
+	if (!map)
+		return 0;
+	return (map->nr_entries + map->nr_entries_old);
+}
+
 int hashmap_opt(hashmap_t *map, const int key, float value) {
 	if (!map)
 		return -1;

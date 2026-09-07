@@ -27,6 +27,8 @@ int hash_insert(hashmap_t **map,
 
 int hash_delete(hashmap_t **map, const void *key, size_t key_size);
 
+size_t hashmap_getsize(hashmap_t  *map);
+
 int hashmap_opt(hashmap_t *map, const int option, float value);
 
 #endif /* HASHMAP_H */
