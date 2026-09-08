@@ -87,6 +87,38 @@ static void hash_free_(hashmap_entry_t *entry) {
 	free(entry);
 }
 
+void hashmap_clear(hashmap_t **map) {
+	if (!map || !*map)
+		return;
+	hashmap_entry_t **current;
+	hashmap_entry_t *tmp;
+	for (size_t i = 0; i < (*map)->nr_buckets; i++) {
+		current = &(*map)->buckets[i];
+		while (*current) {
+			tmp = *current;
+			*current = (*current)->next;
+			hash_free_(tmp);
+		}
+	}
+	(*map)->nr_buckets = 0;
+	(*map)->nr_entries = 0;
+	if ((*map)->resize_in_progress) {
+		for (size_t i = (*map)->resize_bucket; i < (*map)->nr_buckets_old; i++) {
+			current = &(*map)->buckets_old[i];
+			while (*current) {
+				tmp = *current;
+				*current = (*current)->next;
+				hash_free_(tmp);
+			}
+		}
+		(*map)->nr_buckets_old = 0;
+		(*map)->nr_entries_old = 0;
+		(*map)->resize_in_progress = 0;
+		(*map)->resize_bucket = 0;
+	}
+	hashmap_free_(map);
+}
+
 static hashmap_entry_t **hash_search_table_(hashmap_entry_t **buckets,
 					   size_t nr_buckets,
 					   const void *key,

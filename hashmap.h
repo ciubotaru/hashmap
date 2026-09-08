@@ -9,6 +9,8 @@ typedef struct hashmap hashmap_t;
 
 hashmap_t *hashmap_create(void);
 
+void hashmap_clear(hashmap_t **map);
+
 int hash_probe(const hashmap_t *map,
 	       const void *key,
 	       size_t key_size);
