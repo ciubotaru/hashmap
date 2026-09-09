@@ -6,7 +6,7 @@
 static const hashmap_options_t default_options = {
 	.grow_threshold = 1.2,
 	.shrink_threshold = 0.3,
-	.resize_factor = 2,
+	.resize_shift = 1,
 	.min_buckets = 16
 };
 
@@ -44,7 +44,7 @@ static size_t hash_bucket(size_t nr_buckets,
 			  const void *key,
 			  size_t key_size) {
 	size_t hash = hash_function(key, key_size);
-	return hash % nr_buckets;
+	return hash & (nr_buckets - 1);
 }
 
 static struct hashmap *hashmap_create_(size_t nr_buckets) {
@@ -276,7 +276,7 @@ int hash_insert(hashmap_t **map,
 	if (!(*map)->resize_in_progress) {
 		if ((float)(*map)->nr_entries >= (*map)->options.grow_threshold
 				* (float)(*map)->nr_buckets)
-			hashmap_resize(*map, (*map)->nr_buckets * (*map)->options.resize_factor);
+			hashmap_resize(*map, (*map)->nr_buckets << (*map)->options.resize_shift);
 	}
 	if ((*map)->resize_in_progress)
 		move_on_resize(*map);
@@ -343,7 +343,7 @@ int hash_put(hashmap_t **map,
 	if (!(*map)->resize_in_progress) {
 		if ((float)(*map)->nr_entries >= (*map)->options.grow_threshold
 				* (float)(*map)->nr_buckets)
-			hashmap_resize(*map, (*map)->nr_buckets * (*map)->options.resize_factor);
+			hashmap_resize(*map, (*map)->nr_buckets << (*map)->options.resize_shift);
 	}
 	if ((*map)->resize_in_progress)
 		move_on_resize(*map);
@@ -382,7 +382,7 @@ int hash_delete(hashmap_t **map, const void *key, size_t key_size) {
 				<= (*map)->options.shrink_threshold
 				* (float)(*map)->nr_buckets)
 			hashmap_resize(*map, (*map)->nr_buckets
-				/ (*map)->options.resize_factor);
+				>> (*map)->options.resize_shift);
 	}
 	if ((*map)->resize_in_progress)
 		move_on_resize(*map);

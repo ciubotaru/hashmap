@@ -14,7 +14,7 @@ typedef struct hashmap_entry {
 typedef struct {
 	float grow_threshold;
 	float shrink_threshold;
-	size_t resize_factor;
+	size_t resize_shift;
 	size_t min_buckets;
 } hashmap_options_t;
 
