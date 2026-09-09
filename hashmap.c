@@ -96,6 +96,43 @@ int hash_probe(const hashmap_t *map, const void *key, const size_t key_size) {
 		return 0;
 }
 
+static int hash_insert_(hashmap_t *map,
+			const void *key,
+			size_t key_size,
+			const void *data,
+			size_t data_size) {
+	hashmap_entry_t *new = malloc(sizeof(hashmap_entry_t));
+	if (!new)
+		return -1;
+	if (key_size) {
+		new->key = malloc(key_size);
+		if (!new->key) {
+			hash_free_(new);
+			return -1;
+		}
+		memcpy(new->key, key, key_size);
+	}
+	else
+		new->key = NULL;
+	if (data_size) {
+		new->data = malloc(data_size);
+		if (!new->data) {
+			hash_free_(new);
+			return -1;
+		}
+		memcpy(new->data, data, data_size);
+	}
+	else
+		new->data = NULL;
+	new->key_size = key_size;
+	new->data_size = data_size;
+	size_t bucket_nr = hash_bucket(map->nr_buckets, key, key_size);
+	new->next = map->buckets[bucket_nr];
+	map->buckets[bucket_nr] = new;
+	map->nr_entries++;
+	return 0;
+}
+
 int hashmap_opt(hashmap_t *map, const int key, float value) {
 	if (!map)
 		return -1;
