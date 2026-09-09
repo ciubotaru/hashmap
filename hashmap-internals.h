@@ -15,6 +15,7 @@ typedef struct {
 
 struct hashmap {
 	size_t nr_buckets;
+	size_t nr_entries;
 	hashmap_entry_t **buckets;
 	hashmap_options_t options;
 };
