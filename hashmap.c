@@ -397,6 +397,20 @@ size_t hashmap_getsize(hashmap_t *map) {
 	return (map->nr_entries + map->nr_entries_old);
 }
 
+int hashmap_info(const hashmap_t *map, hashmap_info_t *info) {
+	if (map == NULL || info == NULL)
+		return -1;
+	info->nr_buckets = map->nr_buckets;
+	info->nr_entries = map->nr_entries;
+	info->load_factor =
+		(float)map->nr_entries / (float)map->nr_buckets;
+	info->resize_in_progress = map->resize_in_progress;
+	info->nr_buckets_old = map->nr_buckets_old;
+	info->nr_entries_old = map->nr_entries_old;
+	info->resize_bucket = map->resize_bucket;
+	return 0;
+}
+
 int hashmap_opt(hashmap_t *map, const int key, float value) {
 	if (!map)
 		return -1;

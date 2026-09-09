@@ -1,9 +1,21 @@
 #ifndef HASHMAP_H
 #define HASHMAP_H
 
+#include <stdbool.h>
+
 enum option_keys {
 	HASHMAP_MIN_BUCKETS
 };
+
+typedef struct {
+	size_t nr_buckets;
+	size_t nr_entries;
+	float load_factor;
+	bool resize_in_progress;
+	size_t nr_buckets_old;
+	size_t nr_entries_old;
+	size_t resize_bucket;
+} hashmap_info_t;
 
 typedef struct hashmap hashmap_t;
 
@@ -42,6 +54,8 @@ int hash_put(hashmap_t **map,
 int hash_delete(hashmap_t **map, const void *key, size_t key_size);
 
 size_t hashmap_getsize(hashmap_t  *map);
+
+int hashmap_info(const hashmap_t *map, hashmap_info_t *info);
 
 int hashmap_opt(hashmap_t *map, const int option, float value);
 
