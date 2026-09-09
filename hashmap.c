@@ -70,6 +70,15 @@ hashmap_t *hashmap_create(void) {
 	return hashmap_create_(default_options.min_buckets);
 }
 
+static void hashmap_free_(hashmap_t **map) {
+	if ((*map)->buckets)
+		free((*map)->buckets);
+	if ((*map)->buckets_old)
+		free((*map)->buckets_old);
+	free(*map);
+	*map = NULL;
+}
+
 static void hash_free_(hashmap_entry_t *entry) {
 	if (entry->key)
 		free(entry->key);
