@@ -100,6 +100,21 @@ int hash_probe(const hashmap_t *map, const void *key, const size_t key_size) {
 		return 0;
 }
 
+static int hashmap_resize(hashmap_t *map, size_t new_size) {
+	hashmap_entry_t **tmp = calloc(new_size, sizeof(hashmap_entry_t *));
+	if (tmp == NULL)
+		return -1;
+	map->buckets_old = map->buckets;
+	map->nr_buckets_old = map->nr_buckets;
+	map->nr_entries_old = map->nr_entries;
+	map->buckets = tmp;
+	map->nr_buckets = new_size;
+	map->nr_entries = 0;
+	map->resize_bucket = 0;
+	map->resize_in_progress = true;
+	return 0;
+}
+
 static int hash_insert_(hashmap_t *map,
 			const void *key,
 			size_t key_size,
