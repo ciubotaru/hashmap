@@ -55,6 +55,10 @@ static struct hashmap *hashmap_create_(size_t nr_buckets) {
 	}
 	newmap->nr_buckets = nr_buckets;
 	newmap->nr_entries = 0;
+	newmap->nr_buckets_old = 0;
+	newmap->nr_entries_old = 0;
+	newmap->buckets_old = NULL;
+	newmap->resize_bucket = 0;
 	newmap->options = default_options;
 	return newmap;
 }
