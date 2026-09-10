@@ -269,6 +269,23 @@ int hash_update_(hashmap_entry_t *entry,
 	return 0;
 }
 
+int hash_update(hashmap_t *map,
+		 const void *key,
+		 const size_t key_size,
+		 const void *data,
+		 const size_t data_size) {
+	if (!map)
+		return -1;
+	if (key == NULL && key_size != 0)
+		return -1;
+	if (data == NULL && data_size != 0)
+		return -1;
+	hashmap_entry_t *entry = hash_search_(map, key, key_size);
+	if (!entry)
+		return -1;
+	return hash_update_(entry, data, data_size);;
+}
+
 int hash_delete(hashmap_t **map, const void *key, size_t key_size) {
 	if (!map || !*map)
 		return -1;

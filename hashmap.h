@@ -25,6 +25,12 @@ int hash_insert(hashmap_t **map,
 		const void *data,
 		size_t data_size);
 
+int hash_update(hashmap_t *map,
+		const void *key,
+		const size_t key_size,
+		const void *data,
+		const size_t data_size);
+
 int hash_delete(hashmap_t **map, const void *key, size_t key_size);
 
 size_t hashmap_getsize(hashmap_t  *map);
