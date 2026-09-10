@@ -4,6 +4,8 @@
 #include "hashmap-internals.h"
 
 static const hashmap_options_t default_options = {
+	.grow_threshold = 1.2,
+	.resize_factor = 2,
 	.min_buckets = 16
 };
 
