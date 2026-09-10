@@ -234,6 +234,47 @@ int hash_insert(hashmap_t **map,
 	return 0;
 }
 
+int hash_delete(hashmap_t **map, const void *key, size_t key_size) {
+	if (!map || !*map)
+		return -1;
+	if (!key && key_size)
+		return -1;
+	hashmap_entry_t **entry_ptr = hash_search_table_((*map)->buckets, (*map)->nr_buckets, key, key_size);
+	hashmap_entry_t *tmp;
+	if (*entry_ptr) {
+		tmp = *entry_ptr;
+		*entry_ptr = (*entry_ptr)->next;
+		hash_free_(tmp);
+		(*map)->nr_entries--;
+	}
+	else if ((*map)->resize_in_progress) {
+		entry_ptr = hash_search_table_((*map)->buckets_old, (*map)->nr_buckets_old, key, key_size);
+		if (*entry_ptr) {
+			tmp = *entry_ptr;
+			*entry_ptr = (*entry_ptr)->next;
+			hash_free_(tmp);
+			(*map)->nr_entries_old--;
+		}
+		else
+			return -1;
+	}
+	else
+		return -1;
+	if (!(*map)->resize_in_progress) {
+		if ((*map)->nr_buckets > (*map)->options.min_buckets
+				&& (float)(*map)->nr_entries
+				<= (*map)->options.shrink_threshold
+				* (float)(*map)->nr_buckets)
+			hashmap_resize(*map, (*map)->nr_buckets
+				/ (*map)->options.resize_factor);
+	}
+	if ((*map)->resize_in_progress)
+		move_on_resize(*map);
+	if ((*map)->nr_entries == 0)
+		hashmap_free_(map);
+	return 0;
+}
+
 int hashmap_opt(hashmap_t *map, const int key, float value) {
 	if (!map)
 		return -1;
