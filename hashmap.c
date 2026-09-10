@@ -75,6 +75,20 @@ static void hash_free_(hashmap_entry_t *entry) {
 	free(entry);
 }
 
+static hashmap_entry_t **hash_search_table_(hashmap_entry_t **buckets,
+					   size_t nr_buckets,
+					   const void *key,
+					   size_t key_size) {
+	size_t bucket_nr = hash_bucket(nr_buckets, key, key_size);
+	hashmap_entry_t **current = &buckets[bucket_nr];
+	while (*current) {
+		if (hash_compare(key, key_size, (*current)->key, (*current)->key_size) == 0)
+			break;
+		current = &(*current)->next;
+	}
+	return current;
+}
+
 static hashmap_entry_t *hash_search_(const hashmap_t *map,
 			      const void *key,
 			      const size_t key_size) {
