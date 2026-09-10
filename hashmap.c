@@ -211,7 +211,16 @@ int hash_insert(hashmap_t **map,
 	}
 	if (hash_search_(*map, key, key_size))
 		return -1;
-	hash_insert_(*map, key, key_size, data, data_size);
+	int rc = hash_insert_(*map, key, key_size, data, data_size);
+	if (rc != 0)
+		return rc;
+	if (!(*map)->resize_in_progress) {
+		if ((float)(*map)->nr_entries >= (*map)->options.grow_threshold
+				* (float)(*map)->nr_buckets)
+			hashmap_resize(*map, (*map)->nr_buckets * (*map)->options.resize_factor);
+	}
+	if ((*map)->resize_in_progress)
+		move_on_resize(*map);
 	return 0;
 }
 
