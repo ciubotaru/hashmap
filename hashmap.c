@@ -286,6 +286,38 @@ int hash_update(hashmap_t *map,
 	return hash_update_(entry, data, data_size);;
 }
 
+int hash_put(hashmap_t **map,
+		 const void *key,
+		 const size_t key_size,
+		 const void *data,
+		 const size_t data_size) {
+	if (!map)
+		return -1;
+	if (key == NULL && key_size != 0)
+		return -1;
+	if (data == NULL && data_size != 0)
+		return -1;
+	if (!*map) {
+		*map = hashmap_create();
+		if (!*map)
+			return -1;
+	}
+	hashmap_entry_t *entry = hash_search_(*map, key, key_size);
+	if (entry)
+		return hash_update_(entry, data, data_size);
+	int rc = hash_insert_(*map, key, key_size, data, data_size);
+	if (rc != 0)
+		return rc;
+	if (!(*map)->resize_in_progress) {
+		if ((float)(*map)->nr_entries >= (*map)->options.grow_threshold
+				* (float)(*map)->nr_buckets)
+			hashmap_resize(*map, (*map)->nr_buckets * (*map)->options.resize_factor);
+	}
+	if ((*map)->resize_in_progress)
+		move_on_resize(*map);
+	return 0;
+}
+
 int hash_delete(hashmap_t **map, const void *key, size_t key_size) {
 	if (!map || !*map)
 		return -1;
