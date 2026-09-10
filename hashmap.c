@@ -251,6 +251,24 @@ int hash_insert(hashmap_t **map,
 	return 0;
 }
 
+int hash_update_(hashmap_entry_t *entry,
+		 const void *data,
+		 size_t data_size) {
+	if (!data && data_size)
+		return -1;
+	void *new_data = NULL;
+	if (data_size) {
+		new_data = malloc(data_size);
+		if (!new_data)
+			return -1;
+		memcpy(new_data, data, data_size);
+	}
+	free(entry->data);
+	entry->data = new_data;
+	entry->data_size = data_size;
+	return 0;
+}
+
 int hash_delete(hashmap_t **map, const void *key, size_t key_size) {
 	if (!map || !*map)
 		return -1;
