@@ -92,14 +92,12 @@ static hashmap_entry_t **hash_search_table_(hashmap_entry_t **buckets,
 static hashmap_entry_t *hash_search_(const hashmap_t *map,
 			      const void *key,
 			      const size_t key_size) {
-	size_t bucket_nr = hash_bucket(map->nr_buckets, key, key_size);
-	hashmap_entry_t *current = map->buckets[bucket_nr];
-	while (current) {
-		if (hash_compare(key, key_size, current->key, current->key_size) == 0)
-			break;
-		current = current->next;
-	}
-	return current;
+	if (!map)
+		return NULL;
+	hashmap_entry_t **current = hash_search_table_(map->buckets, map->nr_buckets, key, key_size);
+	if (!*current && map->resize_in_progress)
+		current = hash_search_table_(map->buckets_old, map->nr_buckets_old, key, key_size);
+	return *current;
 }
 
 int hash_probe(const hashmap_t *map, const void *key, const size_t key_size) {
