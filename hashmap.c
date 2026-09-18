@@ -415,6 +415,27 @@ int hashmap_opt(hashmap_t *map, const int key, float value) {
 	if (!map)
 		return -1;
 	switch (key) {
+	case HASHMAP_GROW_THRESHOLD:
+		if (value < 0.0f)
+			return -1;
+		if (value <
+		    2.0f * map->options.shrink_threshold *
+		    (1 << map->options.resize_shift))
+			return -1;
+		if (map->options.grow_threshold == value)
+			return 0;
+		map->options.grow_threshold = value;
+		break;
+	case HASHMAP_SHRINK_THRESHOLD:
+		if (value < 0.0f)
+			return -1;
+		if (map->options.grow_threshold <
+		    2.0f * value * (float) (1 << map->options.resize_shift))
+			return -1;
+		if (map->options.shrink_threshold == value)
+			return 0;
+		map->options.shrink_threshold = value;
+		break;
 	case HASHMAP_MIN_BUCKETS:
 		if (!isfinite(value))
 			return -1;
@@ -430,6 +451,60 @@ int hashmap_opt(hashmap_t *map, const int key, float value) {
 		break;
 	default:
 		return -1;
+	}
+	size_t nr_buckets_new =
+		map->nr_buckets >
+		map->options.min_buckets ? map->nr_buckets : map->
+		options.min_buckets;
+	while ((float) map->nr_entries >=
+	       map->options.grow_threshold * (float) nr_buckets_new)
+		nr_buckets_new <<= map->options.resize_shift;
+	while (nr_buckets_new > map->options.min_buckets
+	       && (float) map->nr_entries <=
+	       map->options.shrink_threshold * (float) nr_buckets_new)
+		nr_buckets_new >>= map->options.resize_shift;
+	size_t new_bucket_nr;
+	hashmap_entry_t *tmp;
+	if (nr_buckets_new != map->nr_buckets) {
+		hashmap_entry_t **buckets_new = calloc(sizeof(hashmap_entry_t *), nr_buckets_new);
+		size_t nr_entries_new = 0;
+		size_t resize_bucket = 0;
+		while (map->nr_entries) {
+			while (!map->buckets[resize_bucket])
+				resize_bucket++;
+			tmp = map->buckets[resize_bucket];
+			new_bucket_nr =
+				hash_bucket(nr_buckets_new, tmp->key, tmp->key_size);
+			map->buckets[resize_bucket] = tmp->next;
+			tmp->next = buckets_new[new_bucket_nr];
+			buckets_new[new_bucket_nr] = tmp;
+			nr_entries_new++;
+			map->nr_entries--;
+		}
+		free(map->buckets);
+		map->buckets = buckets_new;
+		map->nr_entries = nr_entries_new;
+		map->nr_buckets = nr_buckets_new;
+	}
+	if (map->resize_in_progress) {
+		while (map->nr_entries_old) {
+			while (!map->buckets_old[map->resize_bucket])
+				map->resize_bucket++;
+			tmp = map->buckets_old[map->resize_bucket];
+			new_bucket_nr =
+				hash_bucket(map->nr_buckets, tmp->key,
+					    tmp->key_size);
+			map->buckets_old[map->resize_bucket] = tmp->next;
+			tmp->next = map->buckets[new_bucket_nr];
+			map->buckets[new_bucket_nr] = tmp;
+			map->nr_entries++;
+			map->nr_entries_old--;
+		}
+		free(map->buckets_old);
+		map->buckets_old = NULL;
+		map->resize_in_progress = false;
+		map->nr_buckets_old = 0;
+		map->resize_bucket = 0;
 	}
 	return 0;
 }

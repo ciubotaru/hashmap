@@ -4,6 +4,8 @@
 #include <stdbool.h>
 
 enum option_keys {
+	HASHMAP_GROW_THRESHOLD,
+	HASHMAP_SHRINK_THRESHOLD,
 	HASHMAP_MIN_BUCKETS
 };
 
