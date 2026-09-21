@@ -113,7 +113,7 @@ void hashmap_clear(hashmap_t **map) {
 		}
 		(*map)->nr_buckets_old = 0;
 		(*map)->nr_entries_old = 0;
-		(*map)->resize_in_progress = 0;
+		(*map)->resize_in_progress = false;
 		(*map)->resize_bucket = 0;
 	}
 	hashmap_free_(map);
@@ -146,14 +146,14 @@ static hashmap_entry_t *hash_search_(const hashmap_t *map,
 
 int hash_probe(const hashmap_t *map, const void *key, const size_t key_size) {
 	if (!map)
-		return -1;
+		return HASHMAP_INVALID_ARG;
 	if (!key && key_size)
-		return -1;
+		return HASHMAP_INVALID_ARG;
 	hashmap_entry_t *output = hash_search_(map, key, key_size);
 	if (output)
-		return 1;
+		return HASHMAP_OK;
 	else
-		return 0;
+		return HASHMAP_ERROR;
 }
 
 int hash_search(hashmap_t *map,
@@ -161,16 +161,18 @@ int hash_search(hashmap_t *map,
 		size_t key_size,
 		const void **data,
 		size_t *data_size) {
-	if (!map || !data || !data_size)
-		return -1;
+	if (!data || !data_size)
+		return HASHMAP_INVALID_ARG;
 	if (!key && key_size)
-		return -1;
+		return HASHMAP_INVALID_ARG;
+	if (!map)
+		return HASHMAP_ERROR;
 	hashmap_entry_t *entry = hash_search_(map, key, key_size);
 	if (!entry)
-		return -1;
+		return HASHMAP_ERROR;
 	*data = entry->data;
 	*data_size = entry->data_size;
-	return 0;
+	return HASHMAP_OK;
 }
 
 static void move_on_resize(hashmap_t *map) {
@@ -201,7 +203,7 @@ static void move_on_resize(hashmap_t *map) {
 static int hashmap_resize(hashmap_t *map, size_t new_size) {
 	hashmap_entry_t **tmp = calloc(new_size, sizeof(hashmap_entry_t *));
 	if (tmp == NULL)
-		return -1;
+		return HASHMAP_ERROR;
 	map->buckets_old = map->buckets;
 	map->nr_buckets_old = map->nr_buckets;
 	map->nr_entries_old = map->nr_entries;
@@ -210,7 +212,7 @@ static int hashmap_resize(hashmap_t *map, size_t new_size) {
 	map->nr_entries = 0;
 	map->resize_bucket = 0;
 	map->resize_in_progress = true;
-	return 0;
+	return HASHMAP_OK;
 }
 
 static int hash_insert_(hashmap_t *map,
@@ -220,12 +222,12 @@ static int hash_insert_(hashmap_t *map,
 			size_t data_size) {
 	hashmap_entry_t *new = malloc(sizeof(hashmap_entry_t));
 	if (!new)
-		return -1;
+		return HASHMAP_ERROR;
 	if (key_size) {
 		new->key = malloc(key_size);
 		if (!new->key) {
 			hash_free_(new);
-			return -1;
+			return HASHMAP_ERROR;
 		}
 		memcpy(new->key, key, key_size);
 	}
@@ -235,7 +237,7 @@ static int hash_insert_(hashmap_t *map,
 		new->data = malloc(data_size);
 		if (!new->data) {
 			hash_free_(new);
-			return -1;
+			return HASHMAP_ERROR;
 		}
 		memcpy(new->data, data, data_size);
 	}
@@ -247,7 +249,7 @@ static int hash_insert_(hashmap_t *map,
 	new->next = map->buckets[bucket_nr];
 	map->buckets[bucket_nr] = new;
 	map->nr_entries++;
-	return 0;
+	return HASHMAP_OK;
 }
 
 int hash_insert(hashmap_t **map,
@@ -256,22 +258,20 @@ int hash_insert(hashmap_t **map,
 		 const void *data,
 		 const size_t data_size) {
 	if (!map)
-		return -1;
+		return HASHMAP_INVALID_ARG;
 	if (key == NULL && key_size != 0)
-		return -1;
+		return HASHMAP_INVALID_ARG;
 	if (data == NULL && data_size != 0)
-		return -1;
+		return HASHMAP_INVALID_ARG;
 	if (hash_search_(*map, key, key_size))
-		return -1;
+		return HASHMAP_ERROR;
 	if (!*map) {
 		*map = hashmap_create();
 		if (!*map)
-			return -1;
+			return HASHMAP_ERROR;
 	}
-	if (hash_search_(*map, key, key_size))
-		return -1;
 	int rc = hash_insert_(*map, key, key_size, data, data_size);
-	if (rc != 0)
+	if (rc != HASHMAP_OK)
 		return rc;
 	if (!(*map)->resize_in_progress) {
 		if ((float)(*map)->nr_entries >= (*map)->options.grow_threshold
@@ -280,25 +280,25 @@ int hash_insert(hashmap_t **map,
 	}
 	if ((*map)->resize_in_progress)
 		move_on_resize(*map);
-	return 0;
+	return HASHMAP_OK;
 }
 
 int hash_update_(hashmap_entry_t *entry,
 		 const void *data,
 		 size_t data_size) {
 	if (!data && data_size)
-		return -1;
+		return HASHMAP_INVALID_ARG;
 	void *new_data = NULL;
 	if (data_size) {
 		new_data = malloc(data_size);
 		if (!new_data)
-			return -1;
+			return HASHMAP_ERROR;
 		memcpy(new_data, data, data_size);
 	}
 	free(entry->data);
 	entry->data = new_data;
 	entry->data_size = data_size;
-	return 0;
+	return HASHMAP_OK;
 }
 
 int hash_update(hashmap_t *map,
@@ -307,14 +307,14 @@ int hash_update(hashmap_t *map,
 		 const void *data,
 		 const size_t data_size) {
 	if (!map)
-		return -1;
+		return HASHMAP_ERROR;
 	if (key == NULL && key_size != 0)
-		return -1;
+		return HASHMAP_INVALID_ARG;
 	if (data == NULL && data_size != 0)
-		return -1;
+		return HASHMAP_INVALID_ARG;
 	hashmap_entry_t *entry = hash_search_(map, key, key_size);
 	if (!entry)
-		return -1;
+		return HASHMAP_ERROR;
 	return hash_update_(entry, data, data_size);;
 }
 
@@ -324,21 +324,21 @@ int hash_put(hashmap_t **map,
 		 const void *data,
 		 const size_t data_size) {
 	if (!map)
-		return -1;
+		return HASHMAP_INVALID_ARG;
 	if (key == NULL && key_size != 0)
-		return -1;
+		return HASHMAP_INVALID_ARG;
 	if (data == NULL && data_size != 0)
-		return -1;
+		return HASHMAP_INVALID_ARG;
 	if (!*map) {
 		*map = hashmap_create();
 		if (!*map)
-			return -1;
+			return HASHMAP_ERROR;
 	}
 	hashmap_entry_t *entry = hash_search_(*map, key, key_size);
 	if (entry)
 		return hash_update_(entry, data, data_size);
 	int rc = hash_insert_(*map, key, key_size, data, data_size);
-	if (rc != 0)
+	if (rc != HASHMAP_OK)
 		return rc;
 	if (!(*map)->resize_in_progress) {
 		if ((float)(*map)->nr_entries >= (*map)->options.grow_threshold
@@ -347,14 +347,16 @@ int hash_put(hashmap_t **map,
 	}
 	if ((*map)->resize_in_progress)
 		move_on_resize(*map);
-	return 0;
+	return HASHMAP_OK;
 }
 
 int hash_delete(hashmap_t **map, const void *key, size_t key_size) {
-	if (!map || !*map)
-		return -1;
+	if (!map)
+		return HASHMAP_INVALID_ARG;
+	if (!*map)
+		return HASHMAP_ERROR;
 	if (!key && key_size)
-		return -1;
+		return HASHMAP_INVALID_ARG;
 	hashmap_entry_t **entry_ptr = hash_search_table_((*map)->buckets, (*map)->nr_buckets, key, key_size);
 	hashmap_entry_t *tmp;
 	if (*entry_ptr) {
@@ -372,10 +374,10 @@ int hash_delete(hashmap_t **map, const void *key, size_t key_size) {
 			(*map)->nr_entries_old--;
 		}
 		else
-			return -1;
+			return HASHMAP_ERROR;
 	}
 	else
-		return -1;
+		return HASHMAP_ERROR;
 	if (!(*map)->resize_in_progress) {
 		if ((*map)->nr_buckets > (*map)->options.min_buckets
 				&& (float)(*map)->nr_entries
@@ -388,7 +390,7 @@ int hash_delete(hashmap_t **map, const void *key, size_t key_size) {
 		move_on_resize(*map);
 	if ((*map)->nr_entries == 0)
 		hashmap_free_(map);
-	return 0;
+	return HASHMAP_OK;
 }
 
 size_t hashmap_getsize(hashmap_t *map) {
@@ -399,7 +401,7 @@ size_t hashmap_getsize(hashmap_t *map) {
 
 int hashmap_info(const hashmap_t *map, hashmap_info_t *info) {
 	if (map == NULL || info == NULL)
-		return -1;
+		return HASHMAP_INVALID_ARG;
 	info->nr_buckets = map->nr_buckets;
 	info->nr_entries = map->nr_entries;
 	info->load_factor =
@@ -408,49 +410,49 @@ int hashmap_info(const hashmap_t *map, hashmap_info_t *info) {
 	info->nr_buckets_old = map->nr_buckets_old;
 	info->nr_entries_old = map->nr_entries_old;
 	info->resize_bucket = map->resize_bucket;
-	return 0;
+	return HASHMAP_OK;
 }
 
 int hashmap_opt(hashmap_t *map, const int key, float value) {
 	if (!map)
-		return -1;
+		return HASHMAP_INVALID_ARG;
 	switch (key) {
 	case HASHMAP_GROW_THRESHOLD:
 		if (value < 0.0f)
-			return -1;
+			return HASHMAP_INVALID_ARG;
 		if (value <
 		    2.0f * map->options.shrink_threshold *
 		    (1 << map->options.resize_shift))
-			return -1;
+			return HASHMAP_INVALID_ARG;
 		if (map->options.grow_threshold == value)
-			return 0;
+			return HASHMAP_OK;
 		map->options.grow_threshold = value;
 		break;
 	case HASHMAP_SHRINK_THRESHOLD:
 		if (value < 0.0f)
-			return -1;
+			return HASHMAP_INVALID_ARG;
 		if (map->options.grow_threshold <
 		    2.0f * value * (float) (1 << map->options.resize_shift))
-			return -1;
+			return HASHMAP_INVALID_ARG;
 		if (map->options.shrink_threshold == value)
-			return 0;
+			return HASHMAP_OK;
 		map->options.shrink_threshold = value;
 		break;
 	case HASHMAP_MIN_BUCKETS:
 		if (!isfinite(value))
-			return -1;
+			return HASHMAP_INVALID_ARG;
 		if (value < 1.0f)
-			return -1;
+			return HASHMAP_INVALID_ARG;
 		if (value != floorf(value))
-			return -1;
+			return HASHMAP_INVALID_ARG;
 		if (value >= (float)SIZE_MAX)
-			return -1;
+			return HASHMAP_INVALID_ARG;
 		if (map->options.min_buckets == (size_t) value)
-			return 0;
+			return HASHMAP_OK;
 		map->options.min_buckets = (size_t) value;
 		break;
 	default:
-		return -1;
+		return HASHMAP_INVALID_ARG;
 	}
 	size_t nr_buckets_new =
 		map->nr_buckets >
@@ -506,5 +508,5 @@ int hashmap_opt(hashmap_t *map, const int key, float value) {
 		map->nr_buckets_old = 0;
 		map->resize_bucket = 0;
 	}
-	return 0;
+	return HASHMAP_OK;
 }

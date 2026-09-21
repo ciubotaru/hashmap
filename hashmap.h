@@ -3,6 +3,10 @@
 
 #include <stdbool.h>
 
+#define HASHMAP_OK 0
+#define HASHMAP_ERROR -1
+#define HASHMAP_INVALID_ARG -2
+
 enum option_keys {
 	HASHMAP_GROW_THRESHOLD,
 	HASHMAP_SHRINK_THRESHOLD,
