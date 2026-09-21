@@ -17,6 +17,35 @@ static size_t hash_function(const char *s, const size_t size) {
 	for (size_t i = 0; i < size; i++, rand1 *= rand2)
 		hash = rand1 * hash + s[i];
 	return hash;
+/*
+	int i;
+	int len = strlen(s);
+	unsigned char ptr[sizeof(size_t)] = {0};
+	for (i = 0; i < len; i++) {
+		ptr[i % sizeof(size_t)] *= 37;
+		ptr[i % sizeof(size_t)] += (unsigned char)s[i];
+	}
+	return *(size_t *) ptr;
+*/
+/*
+	unsigned const char *us = (unsigned const char *) s;
+	size_t hash = 0;
+	while (*us) {
+		hash = hash * 37 + *us;
+		us++;
+	}
+	return hash;
+*/
+/*
+	size_t hash = 0;
+	int i = 0;
+	int len = strlen(s);
+	for (i = 0; i < len; i++) {
+		hash <<= 8;
+		hash += s[i];
+	}
+	return hash;
+*/
 }
 
 static int hash_compare(const void *key1,
