@@ -63,6 +63,14 @@ size_t hashmap_getsize(hashmap_t  *map);
 
 int hashmap_info(const hashmap_t *map, hashmap_info_t *info);
 
+int hashmap_iterate(hashmap_t * map,
+		    int (*callback)(const void *key,
+				    size_t key_size,
+				    const void *data,
+				    size_t data_size,
+				    const void *context),
+		    const void *context);
+
 int hashmap_opt(hashmap_t *map, const int option, float value);
 
 #endif /* HASHMAP_H */

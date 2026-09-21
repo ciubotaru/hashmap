@@ -413,6 +413,49 @@ int hashmap_info(const hashmap_t *map, hashmap_info_t *info) {
 	return HASHMAP_OK;
 }
 
+int hashmap_iterate(hashmap_t *map,
+		    int (*callback)(const void *key,
+				    size_t key_size,
+				    const void *data,
+				    size_t data_size,
+				    const void *context),
+		    const void *context) {
+	if(!map)
+		return HASHMAP_INVALID_ARG;
+	size_t i;
+	hashmap_entry_t *current;
+	int retval;
+	for (i = 0; i < map->nr_buckets; i++) {
+		current = map->buckets[i];
+		while (current) {
+			retval = callback(current->key,
+					  current->key_size,
+					  current->data,
+					  current->data_size,
+					  context);
+			if (retval != HASHMAP_OK)
+				return retval;
+			current = current->next;
+		}
+	}
+	if (map->resize_in_progress) {
+		for (i = 0; i < map->nr_buckets_old; i++) {
+			current = map->buckets_old[i];
+			while (current) {
+				retval = callback(current->key,
+						  current->key_size,
+						  current->data,
+						  current->data_size,
+						  context);
+				if (retval != HASHMAP_OK)
+					return retval;
+				current = current->next;
+			}
+		}
+	}
+	return HASHMAP_OK;
+}
+
 int hashmap_opt(hashmap_t *map, const int key, float value) {
 	if (!map)
 		return HASHMAP_INVALID_ARG;
