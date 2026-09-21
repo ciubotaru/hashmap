@@ -6,20 +6,20 @@
 
 static void test_info_null_map(void) {
 	hashmap_info_t info;
-	assert(hashmap_info(NULL, &info) == -1);
+	assert(hashmap_info(NULL, &info) == HASHMAP_INVALID_ARG);
 }
 
 static void test_info_null_info(void) {
 	hashmap_t *map;
 	map = hashmap_create();
 	assert(map != NULL);
-	assert(hashmap_info(map, NULL) == -1);
+	assert(hashmap_info(map, NULL) == HASHMAP_INVALID_ARG);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }
 
 static void test_info_null_map_and_info(void) {
-	assert(hashmap_info(NULL, NULL) == -1);
+	assert(hashmap_info(NULL, NULL) == HASHMAP_INVALID_ARG);
 }
 
 static void test_info_empty_map(void) {
@@ -27,7 +27,7 @@ static void test_info_empty_map(void) {
 	hashmap_info_t info;
 	map = hashmap_create();
 	assert(map != NULL);
-	assert(hashmap_info(map, &info) == 0);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.nr_buckets == 16);
 	assert(info.nr_entries == 0);
 	assert(info.load_factor == 0.0f);
@@ -45,8 +45,8 @@ static void test_info_one_entry(void) {
 	int key = 42;
 	int data = 1234;
 	assert(hash_insert(&map,
-			   &key, sizeof(key), &data, sizeof(data)) == 0);
-	assert(hashmap_info(map, &info) == 0);
+			   &key, sizeof(key), &data, sizeof(data)) == HASHMAP_OK);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.nr_buckets == 16);
 	assert(info.nr_entries == 1);
 	assert(info.load_factor == 1.0f / 16.0f);
@@ -66,9 +66,9 @@ static void test_info_multiple_entries(void) {
 	for (size_t i = 0; i < 4; i++) {
 		assert(hash_insert(&map,
 				   &keys[i], sizeof(keys[i]),
-				   &data[i], sizeof(data[i])) == 0);
+				   &data[i], sizeof(data[i])) == HASHMAP_OK);
 	}
-	assert(hashmap_info(map, &info) == 0);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.nr_buckets == 16);
 	assert(info.nr_entries == 4);
 	assert(info.load_factor == 4.0f / 16.0f);
@@ -88,11 +88,11 @@ static void test_info_after_update(void) {
 	int new_data = 5678;
 	assert(hash_insert(&map,
 			   &key, sizeof(key),
-			   &old_data, sizeof(old_data)) == 0);
+			   &old_data, sizeof(old_data)) == HASHMAP_OK);
 	assert(hash_update(map,
 			   &key, sizeof(key),
-			   &new_data, sizeof(new_data)) == 0);
-	assert(hashmap_info(map, &info) == 0);
+			   &new_data, sizeof(new_data)) == HASHMAP_OK);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.nr_entries == 1);
 	assert(info.load_factor == 1.0f / 16.0f);
 	assert(info.resize_in_progress == false);
@@ -109,11 +109,11 @@ static void test_info_after_delete(void) {
 	for (size_t i = 0; i < 3; i++) {
 		assert(hash_insert(&map,
 				   &keys[i], sizeof(keys[i]),
-				   &data[i], sizeof(data[i])) == 0);
+				   &data[i], sizeof(data[i])) == HASHMAP_OK);
 	}
-	assert(hash_delete(&map, &keys[1], sizeof(keys[1])) == 0);
+	assert(hash_delete(&map, &keys[1], sizeof(keys[1])) == HASHMAP_OK);
 	assert(map != NULL);
-	assert(hashmap_info(map, &info) == 0);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.nr_entries + info.nr_entries_old == 2);
 	assert(info.load_factor == (float) info.nr_entries /
 	       (float) info.nr_buckets);
@@ -129,16 +129,16 @@ static void test_info_after_put(void) {
 	int data1 = 10;
 	int data2 = 20;
 	assert(hash_put(&map,
-			&key1, sizeof(key1), &data1, sizeof(data1)) == 0);
-	assert(hashmap_info(map, &info) == 0);
+			&key1, sizeof(key1), &data1, sizeof(data1)) == HASHMAP_OK);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.nr_entries + info.nr_entries_old == 1);
 	assert(hash_put(&map,
-			&key1, sizeof(key1), &data2, sizeof(data2)) == 0);
-	assert(hashmap_info(map, &info) == 0);
+			&key1, sizeof(key1), &data2, sizeof(data2)) == HASHMAP_OK);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.nr_entries + info.nr_entries_old == 1);
 	assert(hash_put(&map,
-			&key2, sizeof(key2), &data2, sizeof(data2)) == 0);
-	assert(hashmap_info(map, &info) == 0);
+			&key2, sizeof(key2), &data2, sizeof(data2)) == HASHMAP_OK);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.nr_entries + info.nr_entries_old == 2);
 	hashmap_clear(&map);
 	assert(map == NULL);
@@ -154,9 +154,9 @@ static void test_info_during_resize(void) {
 		data = i * 10;
 		assert(hash_insert(&map,
 				   &key, sizeof(key),
-				   &data, sizeof(data)) == 0);
+				   &data, sizeof(data)) == HASHMAP_OK);
 	}
-	assert(hashmap_info(map, &info) == 0);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.resize_in_progress == true);
 	assert(info.nr_buckets == 32);
 	assert(info.nr_buckets_old == 16);
@@ -179,15 +179,15 @@ static void test_info_during_resize_after_insert(void) {
 		data = i * 10;
 		assert(hash_insert(&map,
 				   &key, sizeof(key),
-				   &data, sizeof(data)) == 0);
+				   &data, sizeof(data)) == HASHMAP_OK);
 	}
-	assert(hashmap_info(map, &info) == 0);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.resize_in_progress == true);
 	key = 1000;
 	data = 10000;
 	assert(hash_insert(&map,
-			   &key, sizeof(key), &data, sizeof(data)) == 0);
-	assert(hashmap_info(map, &info) == 0);
+			   &key, sizeof(key), &data, sizeof(data)) == HASHMAP_OK);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.nr_entries + info.nr_entries_old == 21);
 	assert(info.nr_buckets == 32);
 	assert(info.nr_buckets_old == 16);
@@ -207,13 +207,13 @@ static void test_info_during_resize_after_delete(void) {
 		data = i * 10;
 		assert(hash_insert(&map,
 				   &key, sizeof(key),
-				   &data, sizeof(data)) == 0);
+				   &data, sizeof(data)) == HASHMAP_OK);
 	}
-	assert(hashmap_info(map, &info) == 0);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.resize_in_progress == true);
 	key = 0;
-	assert(hash_delete(&map, &key, sizeof(key)) == 0);
-	assert(hashmap_info(map, &info) == 0);
+	assert(hash_delete(&map, &key, sizeof(key)) == HASHMAP_OK);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.nr_entries + info.nr_entries_old == 19);
 	assert(info.nr_buckets == 32);
 	assert(info.nr_buckets_old == 16);
@@ -234,16 +234,16 @@ static void test_info_resize_cursor_changes(void) {
 		data = i * 10;
 		assert(hash_insert(&map,
 				   &key, sizeof(key),
-				   &data, sizeof(data)) == 0);
+				   &data, sizeof(data)) == HASHMAP_OK);
 	}
-	assert(hashmap_info(map, &info_before) == 0);
+	assert(hashmap_info(map, &info_before) == HASHMAP_OK);
 	assert(info_before.resize_in_progress == true);
 	assert(info_before.nr_entries + info_before.nr_entries_old == 20);
 	key = 1000;
 	data = 10000;
 	assert(hash_insert(&map,
-			   &key, sizeof(key), &data, sizeof(data)) == 0);
-	assert(hashmap_info(map, &info_after) == 0);
+			   &key, sizeof(key), &data, sizeof(data)) == HASHMAP_OK);
+	assert(hashmap_info(map, &info_after) == HASHMAP_OK);
 	assert(info_after.resize_in_progress == true);
 	assert(info_after.nr_entries + info_after.nr_entries_old == 21);
 	assert(info_after.resize_bucket >= info_before.resize_bucket);
@@ -262,20 +262,20 @@ static void test_info_after_resize_completion(void) {
 		data = i * 10;
 		assert(hash_insert(&map,
 				   &key, sizeof(key),
-				   &data, sizeof(data)) == 0);
+				   &data, sizeof(data)) == HASHMAP_OK);
 	}
 	while (map != NULL) {
-		assert(hashmap_info(map, &info) == 0);
+		assert(hashmap_info(map, &info) == HASHMAP_OK);
 		if (!info.resize_in_progress)
 			break;
 		key = 1000 + (int) info.nr_entries_old;
 		data = key * 10;
 		assert(hash_insert(&map,
 				   &key, sizeof(key),
-				   &data, sizeof(data)) == 0);
+				   &data, sizeof(data)) == HASHMAP_OK);
 	}
 	assert(map != NULL);
-	assert(hashmap_info(map, &info) == 0);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.resize_in_progress == false);
 	assert(info.nr_buckets_old == 0);
 	assert(info.nr_entries_old == 0);
@@ -294,9 +294,9 @@ static void test_info_does_not_modify_map(void) {
 	int key = 42;
 	int data = 1234;
 	assert(hash_insert(&map,
-			   &key, sizeof(key), &data, sizeof(data)) == 0);
-	assert(hashmap_info(map, &info1) == 0);
-	assert(hashmap_info(map, &info2) == 0);
+			   &key, sizeof(key), &data, sizeof(data)) == HASHMAP_OK);
+	assert(hashmap_info(map, &info1) == HASHMAP_OK);
+	assert(hashmap_info(map, &info2) == HASHMAP_OK);
 	assert(info1.nr_buckets == info2.nr_buckets);
 	assert(info1.nr_entries == info2.nr_entries);
 	assert(info1.load_factor == info2.load_factor);

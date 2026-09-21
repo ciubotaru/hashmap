@@ -26,7 +26,7 @@ static void test_clear_nonempty_map(void) {
 	int key = 42;
 	int data = 1234;
 	assert(hash_insert(&map, &key, sizeof(key),
-			   &data, sizeof(data)) == 0);
+			   &data, sizeof(data)) == HASHMAP_OK);
 	assert(map != NULL);
 	hashmap_clear(&map);
 	assert(map == NULL);
@@ -41,9 +41,9 @@ static void test_clear_multiple_entries(void) {
 		assert(hash_insert(&map,
 				   &keys[i], sizeof(keys[i]),
 				   &data[i],
-				   sizeof(data[i])) == 0);
+				   sizeof(data[i])) == HASHMAP_OK);
 	}
-	assert(hashmap_info(map, &info) == 0);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.nr_entries == 3);
 	hashmap_clear(&map);
 	assert(map == NULL);
@@ -64,9 +64,9 @@ static void test_clear_during_resize(void) {
 		key = i;
 		data = i * 10;
 		assert(hash_insert(&map, &key, sizeof(key),
-				   &data, sizeof(data)) == 0);
+				   &data, sizeof(data)) == HASHMAP_OK);
 	}
-	assert(hashmap_info(map, &info) == 0);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.resize_in_progress == true);
 	hashmap_clear(&map);
 	assert(map == NULL);

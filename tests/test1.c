@@ -18,7 +18,7 @@ static void test_create_initial_state(void) {
 	hashmap_info_t info;
 	map = hashmap_create();
 	assert(map != NULL);
-	assert(hashmap_info(map, &info) == 0);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.nr_buckets == 16);
 	assert(info.nr_entries == 0);
 	assert(info.load_factor == 0.0f);

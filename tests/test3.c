@@ -6,14 +6,14 @@
 
 static void test_probe_null_map(void) {
 	int key = 42;
-	assert(hash_probe(NULL, &key, sizeof(key)) == -1);
+	assert(hash_probe(NULL, &key, sizeof(key)) == HASHMAP_INVALID_ARG);
 }
 
 static void test_probe_empty_map(void) {
 	hashmap_t *map;
 	map = hashmap_create();
 	assert(map != NULL);
-	assert(hash_probe(map, "key", 3) == 0);
+	assert(hash_probe(map, "key", 3) == HASHMAP_ERROR);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }
@@ -23,8 +23,8 @@ static void test_probe_existing_key(void) {
 	int key = 42;
 	int data = 1234;
 	assert(hash_insert(&map, &key, sizeof(key),
-			   &data, sizeof(data)) == 0);
-	assert(hash_probe(map, &key, sizeof(key)) == 1);
+			   &data, sizeof(data)) == HASHMAP_OK);
+	assert(hash_probe(map, &key, sizeof(key)) == HASHMAP_OK);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }
@@ -35,8 +35,8 @@ static void test_probe_missing_key(void) {
 	int key2 = 43;
 	int data = 1234;
 	assert(hash_insert(&map, &key1, sizeof(key1),
-			   &data, sizeof(data)) == 0);
-	assert(hash_probe(map, &key2, sizeof(key2)) == 0);
+			   &data, sizeof(data)) == HASHMAP_OK);
+	assert(hash_probe(map, &key2, sizeof(key2)) == HASHMAP_ERROR);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }
@@ -48,8 +48,8 @@ static void test_probe_zero_size_key(void) {
 	/*
 	 * A zero-size key is valid even when its pointer is NULL.
 	 */
-	assert(hash_insert(&map, NULL, 0, &data, sizeof(data)) == 0);
-	assert(hash_probe(map, NULL, 0) == 1);
+	assert(hash_insert(&map, NULL, 0, &data, sizeof(data)) == HASHMAP_OK);
+	assert(hash_probe(map, NULL, 0) == HASHMAP_OK);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }
@@ -63,16 +63,16 @@ static void test_probe_binary_key(void) {
 		0x00, 0xff, 0x01, 0x00, 0x7e
 	};
 	int data = 1234;
-	assert(hash_insert(&map, key, sizeof(key), &data, sizeof(data)) == 0);
-	assert(hash_probe(map, key, sizeof(key)) == 1);
-	assert(hash_probe(map, missing_key, sizeof(missing_key)) == 0);
+	assert(hash_insert(&map, key, sizeof(key), &data, sizeof(data)) == HASHMAP_OK);
+	assert(hash_probe(map, key, sizeof(key)) == HASHMAP_OK);
+	assert(hash_probe(map, missing_key, sizeof(missing_key)) == HASHMAP_ERROR);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }
 
 static void test_probe_null_key_with_nonzero_size(void) {
 	hashmap_t *map = NULL;
-	assert(hash_probe(map, NULL, 1) == -1);
+	assert(hash_probe(map, NULL, 1) == HASHMAP_INVALID_ARG);
 
 	/*
 	 * The map should not have been created or modified by probe.
@@ -85,13 +85,13 @@ static void test_probe_null_key_with_nonzero_size_nonempty_map(void) {
 	int key = 42;
 	int data = 1234;
 	assert(hash_insert(&map, &key, sizeof(key),
-			   &data, sizeof(data)) == 0);
-	assert(hash_probe(map, NULL, sizeof(key)) == -1);
+			   &data, sizeof(data)) == HASHMAP_OK);
+	assert(hash_probe(map, NULL, sizeof(key)) == HASHMAP_INVALID_ARG);
 
 	/*
 	 * The invalid probe must not affect the existing map.
 	 */
-	assert(hash_probe(map, &key, sizeof(key)) == 1);
+	assert(hash_probe(map, &key, sizeof(key)) == HASHMAP_OK);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }
@@ -107,12 +107,12 @@ static void test_probe_nonnull_key_with_zero_size_nonempty_map(void) {
 	 * Therefore the key itself is an empty byte sequence.
 	 */
 	assert(hash_insert(&map, &key, 0,
-			   &data, sizeof(data)) == 0);
+			   &data, sizeof(data)) == HASHMAP_OK);
 
 	/*
 	 * The actual pointer value must be ignored when key_size == 0.
 	 */
-	assert(hash_probe(map, &other_key, 0) == 1);
+	assert(hash_probe(map, &other_key, 0) == HASHMAP_OK);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }
@@ -130,9 +130,9 @@ static void test_probe_during_resize(void) {
 		key = i;
 		data = i * 10;
 		assert(hash_insert(&map, &key, sizeof(key),
-				   &data, sizeof(data)) == 0);
+				   &data, sizeof(data)) == HASHMAP_OK);
 	}
-	assert(hashmap_info(map, &info) == 0);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.resize_in_progress == true);
 
 	/*
@@ -141,10 +141,10 @@ static void test_probe_during_resize(void) {
 	 */
 	for (int i = 0; i < 20; i++) {
 		key = i;
-		assert(hash_probe(map, &key, sizeof(key)) == 1);
+		assert(hash_probe(map, &key, sizeof(key)) == HASHMAP_OK);
 	}
 	key = 1000;
-	assert(hash_probe(map, &key, sizeof(key)) == 0);
+	assert(hash_probe(map, &key, sizeof(key)) == HASHMAP_ERROR);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }
@@ -162,10 +162,10 @@ static void test_probe_key_in_old_table(void) {
 		key = i;
 		data = i * 10;
 		assert(hash_insert(&map, &key, sizeof(key),
-				   &data, sizeof(data)) == 0);
+				   &data, sizeof(data)) == HASHMAP_OK);
 	}
 
-	assert(hashmap_info(map, &info) == 0);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.resize_in_progress == true);
 	assert(info.nr_entries_old > 0);
 
@@ -177,7 +177,7 @@ static void test_probe_key_in_old_table(void) {
 	 */
 	for (int i = 0; i < 20; i++) {
 		key = i;
-		assert(hash_probe(map, &key, sizeof(key)) == 1);
+		assert(hash_probe(map, &key, sizeof(key)) == HASHMAP_OK);
 	}
 	hashmap_clear(&map);
 	assert(map == NULL);
@@ -196,9 +196,9 @@ static void test_probe_key_in_new_table(void) {
 		key = i;
 		data = i * 10;
 		assert(hash_insert(&map, &key, sizeof(key),
-				   &data, sizeof(data)) == 0);
+				   &data, sizeof(data)) == HASHMAP_OK);
 	}
-	assert(hashmap_info(map, &info) == 0);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.resize_in_progress == true);
 
 	/*
@@ -208,8 +208,8 @@ static void test_probe_key_in_new_table(void) {
 	key = 1000;
 	data = 10000;
 	assert(hash_insert(&map, &key, sizeof(key),
-			   &data, sizeof(data)) == 0);
-	assert(hash_probe(map, &key, sizeof(key)) == 1);
+			   &data, sizeof(data)) == HASHMAP_OK);
+	assert(hash_probe(map, &key, sizeof(key)) == HASHMAP_OK);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }

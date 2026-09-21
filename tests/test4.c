@@ -11,7 +11,7 @@ static void test_search_null_map(void) {
 	size_t data_size;
 	assert(hash_search(NULL,
 			   &key, sizeof(key),
-			   &data, &data_size) == -1);
+			   &data, &data_size) == HASHMAP_ERROR);
 }
 
 static void test_search_empty_map(void) {
@@ -21,7 +21,7 @@ static void test_search_empty_map(void) {
 	map = hashmap_create();
 	assert(map != NULL);
 	assert(hash_search(map,
-			   "key", 3, &data, &data_size) == -1);
+			   "key", 3, &data, &data_size) == HASHMAP_ERROR);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }
@@ -34,10 +34,10 @@ static void test_search_existing_key(void) {
 	size_t data_size;
 	assert(hash_insert(&map,
 			   &key, sizeof(key),
-			   &value, sizeof(value)) == 0);
+			   &value, sizeof(value)) == HASHMAP_OK);
 	assert(hash_search(map,
 			   &key, sizeof(key),
-			   &data, &data_size) == 0);
+			   &data, &data_size) == HASHMAP_OK);
 	assert(data != NULL);
 	assert(data_size == sizeof(value));
 	assert(memcmp(data, &value, sizeof(value)) == 0);
@@ -54,10 +54,10 @@ static void test_search_missing_key(void) {
 	size_t data_size;
 	assert(hash_insert(&map,
 			   &key, sizeof(key),
-			   &value, sizeof(value)) == 0);
+			   &value, sizeof(value)) == HASHMAP_OK);
 	assert(hash_search(map,
 			   &missing_key, sizeof(missing_key),
-			   &data, &data_size) == -1);
+			   &data, &data_size) == HASHMAP_ERROR);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }
@@ -69,10 +69,10 @@ static void test_search_null_data_output(void) {
 	size_t data_size;
 	assert(hash_insert(&map,
 			   &key, sizeof(key),
-			   &value, sizeof(value)) == 0);
+			   &value, sizeof(value)) == HASHMAP_OK);
 	assert(hash_search(map,
 			   &key, sizeof(key),
-			   NULL, &data_size) == -1);
+			   NULL, &data_size) == HASHMAP_INVALID_ARG);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }
@@ -84,10 +84,10 @@ static void test_search_null_size_output(void) {
 	const void *data;
 	assert(hash_insert(&map,
 			   &key, sizeof(key),
-			   &value, sizeof(value)) == 0);
+			   &value, sizeof(value)) == HASHMAP_OK);
 	assert(hash_search(map,
 			   &key, sizeof(key),
-			   &data, NULL) == -1);
+			   &data, NULL) == HASHMAP_INVALID_ARG);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }
@@ -98,10 +98,10 @@ static void test_search_null_outputs(void) {
 	int value = 1234;
 	assert(hash_insert(&map,
 			   &key, sizeof(key),
-			   &value, sizeof(value)) == 0);
+			   &value, sizeof(value)) == HASHMAP_OK);
 	assert(hash_search(map,
 			   &key, sizeof(key),
-			   NULL, NULL) == -1);
+			   NULL, NULL) == HASHMAP_INVALID_ARG);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }
@@ -114,17 +114,17 @@ static void test_search_null_key_with_nonzero_size(void) {
 	size_t data_size;
 	assert(hash_insert(&map,
 			   &existing_key, sizeof(existing_key),
-			   &value, sizeof(value)) == 0);
+			   &value, sizeof(value)) == HASHMAP_OK);
 	assert(hash_search(map,
 			   NULL, sizeof(existing_key),
-			   &data, &data_size) == -1);
+			   &data, &data_size) == HASHMAP_INVALID_ARG);
 
 	/*
 	 * The invalid search must not affect the map.
 	 */
 	assert(hash_search(map,
 			   &existing_key, sizeof(existing_key),
-			   &data, &data_size) == 0);
+			   &data, &data_size) == HASHMAP_OK);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }
@@ -138,14 +138,14 @@ static void test_search_zero_size_key(void) {
 	size_t data_size;
 	assert(hash_insert(&map,
 			   &key, 0,
-			   &value, sizeof(value)) == 0);
+			   &value, sizeof(value)) == HASHMAP_OK);
 
 	/*
 	 * The key pointer must be ignored when key_size == 0.
 	 */
 	assert(hash_search(map,
 			   &other_key, 0,
-			   &data, &data_size) == 0);
+			   &data, &data_size) == HASHMAP_OK);
 	assert(data != NULL);
 	assert(data_size == sizeof(value));
 	assert(memcmp(data, &value, sizeof(value)) == 0);
@@ -159,10 +159,10 @@ static void test_search_zero_size_data(void) {
 	const void *data;
 	size_t data_size;
 	assert(hash_insert(&map,
-			   &key, sizeof(key), NULL, 0) == 0);
+			   &key, sizeof(key), NULL, 0) == HASHMAP_OK);
 	assert(hash_search(map,
 			   &key, sizeof(key),
-			   &data, &data_size) == 0);
+			   &data, &data_size) == HASHMAP_OK);
 
 	/*
 	 * NULL data is valid when data_size == 0.
@@ -185,10 +185,10 @@ static void test_search_binary_data(void) {
 	size_t data_size;
 	assert(hash_insert(&map,
 			   key, sizeof(key),
-			   value, sizeof(value)) == 0);
+			   value, sizeof(value)) == HASHMAP_OK);
 	assert(hash_search(map,
 			   key, sizeof(key),
-			   &data, &data_size) == 0);
+			   &data, &data_size) == HASHMAP_OK);
 	assert(data != NULL);
 	assert(data_size == sizeof(value));
 	assert(memcmp(data, value, sizeof(value)) == 0);
@@ -204,7 +204,7 @@ static void test_search_data_is_copied(void) {
 	size_t data_size;
 	assert(hash_insert(&map,
 			   &key, sizeof(key),
-			   &value, sizeof(value)) == 0);
+			   &value, sizeof(value)) == HASHMAP_OK);
 
 	/*
 	 * Modify the original object after insertion.
@@ -212,7 +212,7 @@ static void test_search_data_is_copied(void) {
 	value = 5678;
 	assert(hash_search(map,
 			   &key, sizeof(key),
-			   &data, &data_size) == 0);
+			   &data, &data_size) == HASHMAP_OK);
 	assert(data_size == sizeof(value));
 	assert(memcmp(data, &(int) { 1234 }, sizeof(int)) == 0);
 	hashmap_clear(&map);
@@ -227,10 +227,10 @@ static void test_search_returns_borrowed_data(void) {
 	size_t data_size;
 	assert(hash_insert(&map,
 			   &key, sizeof(key),
-			   &value, sizeof(value)) == 0);
+			   &value, sizeof(value)) == HASHMAP_OK);
 	assert(hash_search(map,
 			   &key, sizeof(key),
-			   &data, &data_size) == 0);
+			   &data, &data_size) == HASHMAP_OK);
 
 	/*
 	 * The returned pointer refers to hashmap-owned storage.
@@ -258,9 +258,9 @@ static void test_search_during_resize(void) {
 		value = i * 10;
 		assert(hash_insert(&map,
 				   &key, sizeof(key),
-				   &value, sizeof(value)) == 0);
+				   &value, sizeof(value)) == HASHMAP_OK);
 	}
-	assert(hashmap_info(map, &info) == 0);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.resize_in_progress == true);
 
 	/*
@@ -271,7 +271,7 @@ static void test_search_during_resize(void) {
 		key = i;
 		assert(hash_search(map,
 				   &key, sizeof(key),
-				   &data, &data_size) == 0);
+				   &data, &data_size) == HASHMAP_OK);
 		assert(data != NULL);
 		assert(data_size == sizeof(value));
 		value = i * 10;
@@ -280,7 +280,7 @@ static void test_search_during_resize(void) {
 	key = 1000;
 	assert(hash_search(map,
 			   &key, sizeof(key),
-			   &data, &data_size) == -1);
+			   &data, &data_size) == HASHMAP_ERROR);
 	hashmap_clear(&map);
 	assert(map == NULL);
 }
@@ -301,9 +301,9 @@ static void test_search_key_in_new_table(void) {
 		value = i * 10;
 		assert(hash_insert(&map,
 				   &key, sizeof(key),
-				   &value, sizeof(value)) == 0);
+				   &value, sizeof(value)) == HASHMAP_OK);
 	}
-	assert(hashmap_info(map, &info) == 0);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.resize_in_progress == true);
 
 	/*
@@ -313,10 +313,10 @@ static void test_search_key_in_new_table(void) {
 	value = 10000;
 	assert(hash_insert(&map,
 			   &key, sizeof(key),
-			   &value, sizeof(value)) == 0);
+			   &value, sizeof(value)) == HASHMAP_OK);
 	assert(hash_search(map,
 			   &key, sizeof(key),
-			   &data, &data_size) == 0);
+			   &data, &data_size) == HASHMAP_OK);
 	assert(data_size == sizeof(value));
 	assert(memcmp(data, &value, sizeof(value)) == 0);
 	hashmap_clear(&map);
@@ -339,9 +339,9 @@ static void test_search_key_in_old_table(void) {
 		value = i * 10;
 		assert(hash_insert(&map,
 				   &key, sizeof(key),
-				   &value, sizeof(value)) == 0);
+				   &value, sizeof(value)) == HASHMAP_OK);
 	}
-	assert(hashmap_info(map, &info) == 0);
+	assert(hashmap_info(map, &info) == HASHMAP_OK);
 	assert(info.resize_in_progress == true);
 	assert(info.nr_entries_old > 0);
 
@@ -355,7 +355,7 @@ static void test_search_key_in_old_table(void) {
 		value = i * 10;
 		assert(hash_search(map,
 				   &key, sizeof(key),
-				   &data, &data_size) == 0);
+				   &data, &data_size) == HASHMAP_OK);
 		assert(data_size == sizeof(value));
 		assert(memcmp(data, &value, sizeof(value)) == 0);
 	}
