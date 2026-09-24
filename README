@@ -1,0 +1,759 @@
+hashmap
+=======
+
+Version 0.0.1 (September, 2026)
+
+A general-purpose hash table library for C.
+
+Hashmap is a small C library implementing a dynamically sized hash table. It
+stores arbitrary binary keys and arbitrary binary data and manages its own
+copies of both.
+
+The library is designed to be simple to use while providing predictable behavior
+when the table grows or shrinks. Resizing is performed incrementally during
+normal operation, so ordinary insertions and deletions do not require moving the
+entire table at once.
+
+The implementation uses separate chaining: the table consists of an array of
+buckets, and each bucket contains a linked list of entries.
+
+The library can be used directly by compiling hashmap.c into an application, or
+as a shared library that can be installed and linked against by other programs.
+
+General Characteristics
+-----------------------
+
+- Written in C.
+- General-purpose key/value storage.
+- Keys may contain arbitrary binary data.
+- Values may contain arbitrary binary data.
+- Key and value sizes are explicitly specified.
+- The hashmap makes private copies of keys and values.
+- The hashmap owns all stored keys and values.
+- Separate chaining is used to resolve hash collisions.
+- The number of buckets grows and shrinks dynamically.
+- Bucket counts are powers of two.
+- Normal resizing is incremental.
+- Two entries are migrated per insertion or deletion while a resize is
+  in progress.
+- Insertions and searches work while a resize is in progress.
+- Entries may be found in either the current or old table during a
+  migration.
+- Configuration parameters can be changed at runtime.
+- Configuration changes can cause an immediate, complete migration.
+- A configuration change can safely occur while an incremental migration
+  is already in progress.
+- The library can automatically create a hashmap when inserting into a
+  NULL hashmap pointer.
+- The entire hashmap can be destroyed with hashmap_clear().
+- The public API does not expose the internal bucket or entry structures.
+
+Keys and Values
+---------------
+
+Both keys and values are represented by a pointer and a size.
+
+For example:
+
+int key = 123;
+int value = 456;
+
+hash_insert(&map,
+            &key, sizeof(key),
+            &value, sizeof(value));
+
+The hashmap copies both objects. The caller may therefore modify or release the
+original objects after the operation returns.
+
+The hashmap does not store pointers to caller-owned key or value objects.
+
+Binary data is supported. A key or value may contain zero bytes and does not
+have to be a C string.
+
+A size of zero is valid. When the size is zero, the corresponding pointer may be
+NULL.
+
+For a non-zero key size, the key pointer must not be NULL.
+
+For a non-zero data size, the data pointer must not be NULL.
+
+Hash Table Organization
+-----------------------
+
+The table contains a number of buckets. Each bucket is the head of a linked list
+of entries.
+
+Conceptually, the table looks like this:
+
++---------+
+| bucket 0|----> entry ----> entry ----> NULL
++---------+
+| bucket 1|----> NULL
++---------+
+| bucket 2|----> entry ----> NULL
++---------+
+|   ...   |
++---------+
+| bucket N|----> entry ----> entry ----> NULL
++---------+
+
+Each entry contains:
+
+key
+key size
+data
+data size
+pointer to next entry
+
+The current table and an old table can temporarily coexist during an incremental
+resize.
+
+Resizing
+--------
+
+The hashmap automatically resizes according to its load thresholds.
+
+The default configuration is:
+
+grow threshold   = 1.2
+shrink threshold = 0.3
+resize factor    = 2
+minimum buckets  = 16
+
+The resize factor is currently fixed by resize_shift = 1, which means that a
+resize doubles or halves the number of buckets.
+
+Normal resizing is incremental.
+
+When a resize begins, the current table becomes the old table and a new table
+becomes the current table. New entries are inserted into the new table.
+
+Existing entries are gradually moved from the old table to the new table.
+Two entries are migrated after each insertion or deletion.
+
+During this period:
+
+- searches examine both tables;
+- deletion can remove an entry from either table;
+- new insertions go into the current table;
+- the total number of logical entries is the sum of the entries in
+  both tables.
+
+The migration continues until the old table is empty.
+
+This approach avoids requiring a normal insertion or deletion to migrate the
+entire hashmap at once.
+
+RUNTIME CONFIGURATION
+
+The following parameters can currently be changed with hashmap_opt():
+
+HASHMAP_GROW_THRESHOLD
+HASHMAP_SHRINK_THRESHOLD
+HASHMAP_MIN_BUCKETS
+
+The resize factor is currently fixed at two.
+
+Before a new configuration is applied, the configuration is validated.
+
+A configuration change may require a change in the number of buckets.
+
+The required number of buckets is determined iteratively.
+
+Starting with the current number of buckets:
+
+1. If the table requires growth under the new configuration, double the number
+   of buckets and check again.
+
+2. Once growth is no longer required, check whether shrinking is required.
+
+3. If shrinking is required and the minimum bucket limit permits it, halve the
+   number of buckets and check again.
+
+4. Stop when neither growth nor further shrinking is required.
+
+If a configuration change does not require changing the number of buckets, an
+existing incremental migration is completed immediately if one is in progress.
+
+If the required number of buckets differs from the current number, a new bucket
+array is created and the entries are migrated into it immediately.
+
+If an incremental migration was already in progress, entries from both the
+current and old tables are migrated into the newly created bucket array.
+
+Thus, a successful configuration change leaves the hashmap in a stable state
+with no migration in progress.
+
+Memory ownership
+----------------
+
+The hashmap owns every key and data object stored in it.
+
+Memory is allocated internally when an entry is inserted.
+
+When an entry is deleted, its key and data are freed automatically.
+
+When the entire hashmap is cleared, all entries, their keys and data, the bucket
+table, and the hashmap object itself are released.
+
+The caller must not free pointers returned through hash_search().
+
+The data pointer returned by hash_search() is borrowed from the hashmap. It
+remains valid until the corresponding entry is deleted or its data is replaced
+by hash_update() or hash_put().
+
+API
+---
+
+hashmap_t *hashmap_create(void);
+
+Creates and returns a new empty hashmap.
+
+The initial number of buckets is determined by the default minimum bucket
+configuration.
+
+Return value:
+
+Non-NULL hashmap pointer on success.
+NULL if memory allocation fails.
+
+void hashmap_clear(hashmap_t **map);
+
+Destroys the hashmap and all entries stored in it.
+
+The function accepts a pointer to the hashmap pointer. On return, the caller
+pointer is set to NULL.
+
+Example:
+
+hashmap_clear(&map);
+
+After the call:
+
+map == NULL
+
+int hash_probe(const hashmap_t *map,
+const void *key,
+size_t key_size);
+
+Checks whether a key exists in the hashmap.
+
+The function does not return the associated data.
+
+The function searches both the current and old table when a migration is in
+progress.
+
+Arguments:
+
+map
+    Hashmap to search. May be NULL.
+
+key
+    Pointer to the key. May be NULL when key_size is zero.
+
+key_size
+    Size of the key in bytes.
+
+Return value:
+
+HASHMAP_OK
+    The key exists.
+
+HASHMAP_ERROR
+    The key does not exist.
+
+HASHMAP_INVALID_ARG
+    Invalid argument.
+
+int hash_search(hashmap_t *map,
+const void *key,
+size_t key_size,
+const void **data,
+size_t *data_size);
+
+Searches for a key and returns a pointer to its associated data.
+
+The returned data belongs to the hashmap and must not be freed or modified by
+the caller.
+
+Arguments:
+
+map
+    Hashmap to search.
+
+key
+    Pointer to the key. May be NULL when key_size is zero.
+
+key_size
+    Size of the key in bytes.
+
+data
+    Address of a pointer where the hashmap's data pointer is returned.
+
+data_size
+    Address of a size_t where the data size is returned.
+
+Return value:
+
+HASHMAP_OK
+    The key exists and its data was returned.
+
+HASHMAP_ERROR
+    The key does not exist.
+
+HASHMAP_INVALID_ARG
+    Invalid argument.
+
+For an entry whose data size is zero:
+
+*data == NULL
+*data_size == 0
+
+int hash_insert(hashmap_t **map,
+const void *key,
+size_t key_size,
+const void *data,
+size_t data_size);
+
+Inserts a new key/data pair.
+
+The hashmap makes copies of both the key and the data.
+
+If *map is NULL, an empty hashmap is automatically created.
+
+If the key already exists, the insertion fails and the existing entry is not
+replaced.
+
+Arguments:
+
+map
+    Address of the hashmap pointer.
+
+key
+    Pointer to the key. May be NULL when key_size is zero.
+
+key_size
+    Size of the key in bytes.
+
+data
+    Pointer to the data. May be NULL when data_size is zero.
+
+data_size
+    Size of the data in bytes.
+
+Return value:
+
+HASHMAP_OK
+    Entry inserted successfully.
+
+HASHMAP_ERROR
+    Operation failed, for example because of memory allocation failure or
+    because the key already exists.
+
+HASHMAP_INVALID_ARG
+    Invalid argument.
+
+int hash_update(hashmap_t *map,
+const void *key,
+size_t key_size,
+const void *data,
+size_t data_size);
+
+Replaces the data associated with an existing key.
+
+The key itself is not replaced.
+
+The new data is allocated and copied before the old data is released. If
+allocation fails, the existing data remains unchanged.
+
+Arguments:
+
+map
+    Hashmap to modify.
+
+key
+    Pointer to the key. May be NULL when key_size is zero.
+
+key_size
+    Size of the key in bytes.
+
+data
+    Pointer to the new data. May be NULL when data_size is zero.
+
+data_size
+    Size of the new data in bytes.
+
+Return value:
+
+HASHMAP_OK
+    Data updated successfully.
+
+HASHMAP_ERROR
+    The key does not exist or the operation failed.
+
+HASHMAP_INVALID_ARG
+    Invalid argument.
+
+Updating an entry does not change the number of entries in the hashmap.
+
+int hash_put(hashmap_t **map,
+const void *key,
+size_t key_size,
+const void *data,
+size_t data_size);
+
+Inserts a new entry or updates an existing entry.
+
+If the key does not exist, hash_put() behaves like hash_insert().
+
+If the key already exists, its data is replaced as with hash_update().
+
+If *map is NULL, an empty hashmap is automatically created.
+
+Return value:
+
+HASHMAP_OK
+    Entry inserted or updated successfully.
+
+HASHMAP_ERROR
+    Operation failed.
+
+HASHMAP_INVALID_ARG
+    Invalid argument.
+
+hash_put() is useful when the caller does not need to distinguish between an
+insertion and an update.
+
+int hash_delete(hashmap_t **map,
+const void *key,
+size_t key_size);
+
+Deletes the entry associated with a key.
+
+The key and data owned by the hashmap are released.
+
+If the deleted entry is the last entry in the hashmap, the entire hashmap is
+destroyed and *map is set to NULL.
+
+The function searches both tables when a migration is in progress.
+
+Arguments:
+
+map
+    Address of the hashmap pointer.
+
+key
+    Pointer to the key. May be NULL when key_size is zero.
+
+key_size
+    Size of the key in bytes.
+
+Return value:
+
+HASHMAP_OK
+    Entry deleted successfully.
+
+HASHMAP_ERROR
+    The key does not exist.
+
+HASHMAP_INVALID_ARG
+    Invalid argument.
+
+Because deletion of the last entry destroys the hashmap, callers should not use
+the hashmap after hash_delete() without first checking whether the pointer is
+NULL.
+
+size_t hashmap_getsize(hashmap_t *map);
+
+Returns the number of logical entries currently stored in the hashmap.
+
+During an incremental resize, entries may temporarily exist in both the current and old tables. They
+are nevertheless counted only once.
+
+Conceptually:
+
+logical entries =
+    current-table entries + old-table entries
+
+Return value:
+
+Number of logical entries.
+
+For a NULL hashmap:
+
+0
+
+int hashmap_info(const hashmap_t *map,
+hashmap_info_t *info);
+
+Returns information about the current runtime state of the hashmap.
+
+The structure is:
+
+typedef struct {
+    size_t nr_buckets;
+    size_t nr_entries;
+    float load_factor;
+    bool resize_in_progress;
+    size_t nr_buckets_old;
+    size_t nr_entries_old;
+    size_t resize_bucket;
+} hashmap_info_t;
+
+Fields:
+
+nr_buckets
+    Number of buckets in the current table.
+
+nr_entries
+    Number of entries currently stored in the current table.
+
+load_factor
+    Load factor of the current table.
+
+resize_in_progress
+    True when an incremental migration is in progress.
+
+nr_buckets_old
+    Number of buckets in the old table during migration.
+
+nr_entries_old
+    Number of entries remaining in the old table during migration.
+
+resize_bucket
+    Current migration position in the old table.
+
+During a migration, the total number of logical entries is:
+
+nr_entries + nr_entries_old
+
+Return value:
+
+HASHMAP_OK
+    Information returned successfully.
+
+HASHMAP_INVALID_ARG
+    Invalid argument.
+
+int hashmap_opt(hashmap_t *map,
+const int key,
+float value);
+
+Changes one hashmap configuration parameter.
+
+Available keys:
+
+HASHMAP_GROW_THRESHOLD
+HASHMAP_SHRINK_THRESHOLD
+HASHMAP_MIN_BUCKETS
+
+The value is interpreted according to the selected option.
+
+For HASHMAP_GROW_THRESHOLD:
+
+value is the new growth threshold.
+
+For HASHMAP_SHRINK_THRESHOLD:
+
+value is the new shrink threshold.
+
+For HASHMAP_MIN_BUCKETS:
+
+value is converted to the corresponding bucket-count value.
+
+The configuration must satisfy the hashmap's configuration constraints.
+
+A successful option change may trigger an immediate migration.
+
+Return value:
+
+HASHMAP_OK
+    Configuration changed successfully.
+
+HASHMAP_INVALID_ARG
+    Invalid configuration, invalid option, or another error.
+
+RETURN VALUES
+
+The public API currently uses the following return values:
+
+HASHMAP_OK
+    Success.
+
+HASHMAP_ERROR
+    General operation failure or requested object not found, depending on the
+    function.
+
+HASHMAP_INVALID_ARG
+    Invalid argument.
+
+Some functions may have more specific internal error distinctions, but the
+public interface currently exposes the values above.
+
+Compilation
+-----------
+
+The library can be compiled directly with the supplied Makefile.
+
+From the project directory:
+
+make
+
+This produces:
+
+libhashmap.so
+
+The supplied build uses:
+
+-std=c11
+-Wall
+-Wextra
+-Wpedantic
+-Werror
+-fPIC
+
+The library is built as a shared object.
+
+Running the Tests
+-----------------
+
+The project contains a separate test suite.
+
+Run:
+
+make test
+
+The test build automatically discovers the C source files in the tests
+directory.
+
+The tests are linked against libhashmap.so.
+
+To remove generated objects, the shared library, and test executables:
+
+make clean
+
+Using the Library Without Installing It
+---------------------------------------
+
+A program can include the public header:
+
+#include <hashmap.h>
+
+and link against the locally built shared library.
+
+For example:
+
+cc -I/path/to/hashmap \
+   -L/path/to/hashmap \
+   -o my_program my_program.c \
+   -lhashmap
+
+When running the program, the dynamic linker must be able to locate
+libhashmap.so.
+
+For a library located in the project directory, one simple development setup is:
+
+LD_LIBRARY_PATH=/path/to/hashmap ./my_program
+
+Installation
+------------
+
+The current Makefile builds the shared library but does not install it
+system-wide.
+
+A system-wide installation can be performed manually by placing:
+
+hashmap.h
+
+in an appropriate system include directory and:
+
+libhashmap.so
+
+in an appropriate library directory.
+
+After installation, applications can include:
+
+#include <hashmap.h>
+
+and link with:
+
+-lhashmap
+
+The exact installation directories depend on the operating system and local
+system configuration.
+
+Drop-In Use
+-----------
+
+The library can also be used without installing it system-wide.
+
+An application can keep hashmap.c and hashmap.h in its own source tree and
+compile hashmap.c together with the application.
+
+For example:
+
+cc -std=c11 -Wall -Wextra -Wpedantic \
+   -o my_program my_program.c hashmap.c
+
+The application then only needs:
+
+#include <hashmap.h>
+
+This makes the library suitable for small standalone programs as well as larger
+projects.
+
+Typical Use Cases
+-----------------
+
+Hashmap is intended as a general-purpose associative container.
+
+Typical applications include:
+
+- mapping strings to configuration values;
+- mapping identifiers to application objects;
+- counting occurrences of arbitrary keys;
+- implementing symbol tables;
+- caching calculated results;
+- maintaining lookup tables;
+- associating network or protocol identifiers with state;
+- storing binary keys and binary records;
+- implementing application-level indexes;
+- building other data structures that require fast key lookup.
+
+Because keys and values are represented as arbitrary byte sequences rather than
+null-terminated strings, the library is also useful in situations where a
+conventional string-keyed dictionary is insufficient.
+
+For example, a program can use a structure, integer, UUID, binary protocol
+field, or other fixed-size object as a key without converting it to a string
+first.
+
+Current Limitations
+-------------------
+
+The current implementation uses its built-in hash function and key comparison
+function.
+
+Support for user-supplied hash and comparison functions may be added in the
+future.
+
+The resize factor is currently fixed at two.
+
+The current public API provides configuration changes one option at a time,
+through hashmap_opt(). A batch configuration interface may be added in the
+future if needed.
+
+Thread Safety
+-------------
+
+The library does not provide internal synchronization.
+
+A hashmap object should therefore not be accessed concurrently from multiple
+threads when at least one thread may modify it, unless the application provides
+appropriate external synchronization.
+
+License
+-------
+
+This project is distributed under the terms of GNU General Public License
+version 3 or later.
