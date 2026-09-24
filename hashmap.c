@@ -72,7 +72,8 @@ static int hash_compare(const void *key1,
 
 static size_t hash_bucket(size_t nr_buckets,
 			  const void *key,
-			  size_t key_size) {
+			  size_t key_size,
+			  size_t (*hash_function) (const void *key, size_t key_size)) {
 	size_t hash = hash_function(key, key_size);
 	return hash & (nr_buckets - 1);
 }
@@ -152,9 +153,9 @@ void hashmap_clear(hashmap_t **map) {
 static hashmap_entry_t **hash_search_table_(hashmap_entry_t **buckets,
 					   size_t nr_buckets,
 					   const void *key,
-	size_t bucket_nr = hash_bucket(nr_buckets, key, key_size);
 					   size_t key_size,
 					   size_t (* hash_function) (const void *key, size_t key_size)) {
+	size_t bucket_nr = hash_bucket(nr_buckets, key, key_size, hash_function);
 	hashmap_entry_t **current = &buckets[bucket_nr];
 	while (*current) {
 		if (hash_compare(key, key_size, (*current)->key, (*current)->key_size) == 0)
@@ -222,7 +223,7 @@ static void move_on_resize(hashmap_t *map) {
 		while (!map->buckets_old[map->resize_bucket])
 			map->resize_bucket++;
 		tmp = map->buckets_old[map->resize_bucket];
-		new_bucket_nr = hash_bucket(map->nr_buckets, tmp->key, tmp->key_size);
+		new_bucket_nr = hash_bucket(map->nr_buckets, tmp->key, tmp->key_size, map->options.hash_function);
 		map->buckets_old[map->resize_bucket] = tmp->next;
 		tmp->next = map->buckets[new_bucket_nr];
 		map->buckets[new_bucket_nr] = tmp;
@@ -284,7 +285,7 @@ static int hash_insert_(hashmap_t *map,
 		new->data = NULL;
 	new->key_size = key_size;
 	new->data_size = data_size;
-	size_t bucket_nr = hash_bucket(map->nr_buckets, key, key_size);
+	size_t bucket_nr = hash_bucket(map->nr_buckets, key, key_size, map->options.hash_function);
 	new->next = map->buckets[bucket_nr];
 	map->buckets[bucket_nr] = new;
 	map->nr_entries++;
@@ -523,7 +524,7 @@ int hashmap_opt(hashmap_t *map, const int key, float value) {
 				resize_bucket++;
 			tmp = map->buckets[resize_bucket];
 			new_bucket_nr =
-				hash_bucket(nr_buckets_new, tmp->key, tmp->key_size);
+				hash_bucket(nr_buckets_new, tmp->key, tmp->key_size, map->options.hash_function);
 			map->buckets[resize_bucket] = tmp->next;
 			tmp->next = buckets_new[new_bucket_nr];
 			buckets_new[new_bucket_nr] = tmp;
