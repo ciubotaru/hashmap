@@ -152,8 +152,9 @@ void hashmap_clear(hashmap_t **map) {
 static hashmap_entry_t **hash_search_table_(hashmap_entry_t **buckets,
 					   size_t nr_buckets,
 					   const void *key,
-					   size_t key_size) {
 	size_t bucket_nr = hash_bucket(nr_buckets, key, key_size);
+					   size_t key_size,
+					   size_t (* hash_function) (const void *key, size_t key_size)) {
 	hashmap_entry_t **current = &buckets[bucket_nr];
 	while (*current) {
 		if (hash_compare(key, key_size, (*current)->key, (*current)->key_size) == 0)
@@ -168,9 +169,17 @@ static hashmap_entry_t *hash_search_(const hashmap_t *map,
 			      const size_t key_size) {
 	if (!map)
 		return NULL;
-	hashmap_entry_t **current = hash_search_table_(map->buckets, map->nr_buckets, key, key_size);
+	hashmap_entry_t **current = hash_search_table_(map->buckets,
+						       map->nr_buckets,
+						       key,
+						       key_size,
+						       map->options.hash_function);
 	if (!*current && map->resize_in_progress)
-		current = hash_search_table_(map->buckets_old, map->nr_buckets_old, key, key_size);
+		current = hash_search_table_(map->buckets_old,
+					     map->nr_buckets_old,
+					     key,
+					     key_size,
+					     map->options.hash_function);
 	return *current;
 }
 
@@ -387,7 +396,11 @@ int hash_delete(hashmap_t **map, const void *key, size_t key_size) {
 		return HASHMAP_ERROR;
 	if (!key && key_size)
 		return HASHMAP_INVALID_ARG;
-	hashmap_entry_t **entry_ptr = hash_search_table_((*map)->buckets, (*map)->nr_buckets, key, key_size);
+	hashmap_entry_t **entry_ptr = hash_search_table_((*map)->buckets,
+							 (*map)->nr_buckets,
+							 key,
+							 key_size,
+							 (*map)->options.hash_function);
 	hashmap_entry_t *tmp;
 	if (*entry_ptr) {
 		tmp = *entry_ptr;
@@ -396,7 +409,11 @@ int hash_delete(hashmap_t **map, const void *key, size_t key_size) {
 		(*map)->nr_entries--;
 	}
 	else if ((*map)->resize_in_progress) {
-		entry_ptr = hash_search_table_((*map)->buckets_old, (*map)->nr_buckets_old, key, key_size);
+		entry_ptr = hash_search_table_((*map)->buckets_old,
+					       (*map)->nr_buckets_old,
+					       key,
+					       key_size,
+					       (*map)->options.hash_function);
 		if (*entry_ptr) {
 			tmp = *entry_ptr;
 			*entry_ptr = (*entry_ptr)->next;
