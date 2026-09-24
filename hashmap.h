@@ -65,4 +65,6 @@ int hashmap_info(const hashmap_t *map, hashmap_info_t *info);
 
 int hashmap_opt(hashmap_t *map, const int option, float value);
 
+int hashmap_set_hash_function(hashmap_t *map, size_t (* hash_function) (const void *key, size_t key_size));
+
 #endif /* HASHMAP_H */

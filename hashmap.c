@@ -3,11 +3,14 @@
 #include "hashmap.h"
 #include "hashmap-internals.h"
 
+static size_t hash_function(const void *key, size_t key_size);
+
 static const hashmap_options_t default_options = {
 	.grow_threshold = 1.2,
 	.shrink_threshold = 0.3,
 	.resize_shift = 1,
-	.min_buckets = 16
+	.min_buckets = 16,
+	.hash_function = hash_function
 };
 
 static size_t hash_function(const void *key, size_t key_size) {
@@ -543,7 +546,7 @@ int hashmap_opt(hashmap_t *map, const int key, float value) {
 			tmp = map->buckets_old[map->resize_bucket];
 			new_bucket_nr =
 				hash_bucket(map->nr_buckets, tmp->key,
-					    tmp->key_size);
+					    tmp->key_size, map->options.hash_function);
 			map->buckets_old[map->resize_bucket] = tmp->next;
 			tmp->next = map->buckets[new_bucket_nr];
 			map->buckets[new_bucket_nr] = tmp;
@@ -556,5 +559,53 @@ int hashmap_opt(hashmap_t *map, const int key, float value) {
 		map->nr_buckets_old = 0;
 		map->resize_bucket = 0;
 	}
+	return HASHMAP_OK;
+}
+
+int hashmap_set_hash_function(hashmap_t *map, size_t (*hash_function) (const void *key, size_t key_size)) {
+	if (!map || !hash_function)
+		return HASHMAP_INVALID_ARG;
+	if (map->options.hash_function == hash_function)
+		return HASHMAP_OK;
+	hashmap_entry_t **buckets_new = calloc(map->nr_buckets, sizeof(hashmap_entry_t));
+	size_t new_bucket_nr;
+	hashmap_entry_t *tmp;
+	size_t nr_entries_new = 0;
+	size_t resize_bucket = 0;
+	while (map->nr_entries) {
+		while (!map->buckets[resize_bucket])
+			resize_bucket++;
+		tmp = map->buckets[resize_bucket];
+		new_bucket_nr = hash_bucket(map->nr_buckets, tmp->key, tmp->key_size, hash_function);
+		map->buckets[resize_bucket] = tmp->next;
+		tmp->next = buckets_new[new_bucket_nr];
+		buckets_new[new_bucket_nr] = tmp;
+		nr_entries_new++;
+		map->nr_entries--;
+	}
+	free(map->buckets);
+	map->buckets = buckets_new;
+	map->nr_entries = nr_entries_new;
+	if (map->resize_in_progress) {
+		while (map->nr_entries_old) {
+			while (!map->buckets_old[map->resize_bucket])
+				map->resize_bucket++;
+			tmp = map->buckets_old[map->resize_bucket];
+			new_bucket_nr =
+				hash_bucket(map->nr_buckets, tmp->key,
+					    tmp->key_size, hash_function);
+			map->buckets_old[map->resize_bucket] = tmp->next;
+			tmp->next = map->buckets[new_bucket_nr];
+			map->buckets[new_bucket_nr] = tmp;
+			map->nr_entries++;
+			map->nr_entries_old--;
+		}
+		free(map->buckets_old);
+		map->buckets_old = NULL;
+		map->resize_in_progress = false;
+		map->nr_buckets_old = 0;
+		map->resize_bucket = 0;
+	}
+	map->options.hash_function = hash_function;
 	return HASHMAP_OK;
 }

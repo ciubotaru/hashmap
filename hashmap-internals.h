@@ -16,6 +16,7 @@ typedef struct {
 	float shrink_threshold;
 	size_t resize_shift;
 	size_t min_buckets;
+	size_t (* hash_function) (const void *key, size_t key_size);
 } hashmap_options_t;
 
 #define HASHMAP_RESIZE_MOVES 2
