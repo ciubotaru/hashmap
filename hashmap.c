@@ -3,13 +3,6 @@
 #include "hashmap.h"
 #include "hashmap-internals.h"
 
-static const hashmap_options_t default_options = {
-	.grow_threshold = 1.2,
-	.shrink_threshold = 0.3,
-	.resize_shift = 1,
-	.min_buckets = 16
-};
-
 static size_t hash_function(const char *s, const size_t size) {
 	size_t rand1 = 31307;
 	size_t rand2 = 19451;
@@ -39,6 +32,14 @@ static int hash_compare(const void *key1,
 		return 1;
 	return 0;
 }
+
+static const hashmap_options_t default_options = {
+	.grow_threshold = 1.2,
+	.shrink_threshold = 0.3,
+	.resize_shift = 1,
+	.min_buckets = 16,
+	.compare_function = hash_compare
+};
 
 static size_t hash_bucket(size_t nr_buckets,
 			  const void *key,
@@ -508,5 +509,20 @@ int hashmap_opt(hashmap_t *map, const int key, float value) {
 		map->nr_buckets_old = 0;
 		map->resize_bucket = 0;
 	}
+	return HASHMAP_OK;
+}
+
+int hashmap_set_compare_function(hashmap_t *map,
+				 int (*compare_function)(const void *key1,
+						       size_t key1_size,
+						       const void *key2,
+						       size_t key2_size)) {
+	if (map == NULL || compare_function == NULL)
+		return HASHMAP_INVALID_ARG;
+	if (map->options.compare_function == compare_function)
+		return HASHMAP_OK;
+	if (map->nr_entries != 0 || map->nr_entries_old != 0)
+		return HASHMAP_ERROR;
+	map->options.compare_function = compare_function;
 	return HASHMAP_OK;
 }
